@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         Gibbon Custom Styling + Popup Menu (Full + Gamer Party Mode)
+// @name         gibbon-ui-tweaks
 // @namespace    http://tampermonkey.net/
-// @version      5.4
-// @description  Full-featured vertical, scrollable popup menu with Global, Timetable, Extension categories. Master toggle disables all customizations except the GUI and reloads on ON/OFF. Features: link color, accent bar color + font size, paragraph font (incl. notes span, Comic Sans MS), squared corners, better timetable (inline-block fix), keybind selector, popup position selector, and Gamer Party Mode (smooth RGB animation for accent bar + links). Auto reload when Paragraph Font Apply, Squared Corners, Better Timetable toggles are changed. All settings persist via localStorage.
+// @version      1.0
+// @description  Full-featured popup with Global, Timetable, Extension categories. Master toggle disables all customizations except GUI (reloads on ON/OFF). Features: link color, accent bar color + font size, paragraph font (incl. notes span, Comic Sans MS), squared corners, better timetable (inline-block fix), keybind selector, popup position selector, Gamer Party Mode (smooth RGB animation for accent bar + links). Auto reload when Paragraph Font Apply, Squared Corners, Better Timetable toggles are changed. Includes update checker.
 // @match        https://gibbon.ichk.edu.hk/*
 // @grant        none
 // ==/UserScript==
@@ -10,7 +10,8 @@
 (function () {
   'use strict';
 
-  // LocalStorage keys
+  const CURRENT_VERSION = '1.0';
+
   const LS = {
     masterToggle: 'gibbon_masterToggle',
     linkColor: 'gibbon_linkColor',
@@ -25,7 +26,6 @@
     menuPosition: 'gibbon_menuPosition'
   };
 
-  // Defaults
   const DEFAULTS = {
     masterToggle: true,
     linkColor: '#0E70EB',
@@ -40,7 +40,6 @@
     menuPosition: 'top-right'
   };
 
-  // Read persisted values
   const persisted = {
     masterToggle: localStorage.getItem(LS.masterToggle) !== 'false',
     linkColor: localStorage.getItem(LS.linkColor) || DEFAULTS.linkColor,
@@ -55,7 +54,6 @@
     menuPosition: localStorage.getItem(LS.menuPosition) || DEFAULTS.menuPosition
   };
 
-  // Utilities
   function setLS(key, value) { localStorage.setItem(key, value); }
   function upsertStyle(id, cssText) {
     let node = document.getElementById(id);
@@ -67,25 +65,13 @@
     node.textContent = cssText;
   }
 
-  // Base UI CSS (menu styling)
-  const menuCSS = `
+  // Base CSS for menu UI and RGB animation
+  upsertStyle('gibbonUiBase', `
     @import url('https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;700&display=swap');
-    @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap');
-    @import url('https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;700&display=swap');
-    @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;700&display=swap');
 
-    /* Smooth RGB via CSS custom property for broad browser support */
-    @property --rgbHue {
-      syntax: '<number>';
-      inherits: false;
-      initial-value: 0;
-    }
-    @keyframes rgbCycle {
-      from { --rgbHue: 0; }
-      to   { --rgbHue: 360; }
-    }
+    @property --rgbHue { syntax: '<number>'; inherits: false; initial-value: 0; }
+    @keyframes rgbCycle { from { --rgbHue: 0; } to { --rgbHue: 360; } }
 
-    /* Popup menu styles */
     #controlMenu {
       position: fixed;
       top: 12px;
@@ -119,21 +105,15 @@
     }
     #controlMenu button { cursor: pointer; background: #f7f7f7; font-weight: 700; }
     #controlMenu .hint { font-size: 11px; color: #777; }
-  `;
-  upsertStyle('menuBaseCSS', menuCSS);
+    #updateBtn { margin-top: 8px; }
+  `);
 
-  // Apply dynamic page styles (respecting master toggle and gamer party mode)
+  // Apply site styles (respecting master toggle and gamer party mode)
   function applyAllStyles() {
-    // Remove all previously injected dynamic styles
-    ['customStyles'].forEach(id => { const s = document.getElementById(id); if (s) s.remove(); });
-
-    // If master is OFF, do nothing (GUI remains visible)
+    const s = document.getElementById('customStyles'); if (s) s.remove();
     if (!persisted.masterToggle) return;
 
-    let css = '';
-
-    // Paragraph font for p and the specified span notes class
-    css += `
+    let css = `
       p,
       span.block.text-sm.text-gray-700.overflow-x-auto {
         font-family: '${persisted.paragraphFont}', sans-serif !important;
@@ -143,7 +123,6 @@
     `;
 
     if (persisted.gamerParty) {
-      // Smooth RGB animation using hsl and a custom property that cycles 0->360
       css += `
         th {
           --rgbHue: 0;
@@ -152,7 +131,6 @@
           font-size: ${persisted.barFontSize} !important;
           animation: rgbCycle 6s linear infinite !important;
         }
-        /* Ensure animation applies cleanly to text nodes by giving inline-block context */
         main a, .content a, article a, p a {
           --rgbHue: 0;
           color: hsl(var(--rgbHue), 90%, 50%) !important;
@@ -161,7 +139,6 @@
         }
       `;
     } else {
-      // Normal (non-animated) accent + link colors
       css += `
         th {
           background-color: ${persisted.barAccent} !important;
@@ -172,7 +149,6 @@
       `;
     }
 
-    // Timetable toggles
     if (persisted.squareToggle) {
       css += `.ttItem { border-radius: 0 !important; }`;
     }
@@ -189,7 +165,6 @@
         }
         .ttItem:hover { outline-color: #005fa3 !important; }
         .ttItem span { text-align: center !important; font-weight: bold !important; }
-        /* Preserve inline-block timetable labels (e.g., TUT10.2) */
         .ttItem div.inline-block {
           display: inline-block !important;
           font-size: 12px !important;
@@ -204,7 +179,7 @@
   }
   applyAllStyles();
 
-  // Build popup menu GUI
+  // Build popup menu
   const menu = document.createElement('div');
   menu.id = 'controlMenu';
   menu.style.display = (persisted.menuVisible === 'false') ? 'none' : 'flex';
@@ -217,12 +192,12 @@
   title.textContent = 'Gibbon Controls';
   const meta = document.createElement('div');
   meta.className = 'meta';
-  meta.textContent = `Toggle: ${persisted.keybind.toUpperCase()} • Position: ${persisted.menuPosition.replace('-', ' ')}`;
+  meta.textContent = `Version ${CURRENT_VERSION} • Toggle: ${persisted.keybind.toUpperCase()} • Position: ${persisted.menuPosition.replace('-', ' ')}`;
   header.appendChild(title);
   header.appendChild(meta);
   menu.appendChild(header);
 
-  // Master toggle (top of GUI)
+  // Master toggle
   const masterGroup = document.createElement('label');
   masterGroup.className = 'group';
   const masterRow = document.createElement('div');
@@ -399,6 +374,12 @@
   extensionSection.appendChild(keybindGroup);
   extensionSection.appendChild(positionGroup);
 
+  // Update checker button
+  const updateBtn = document.createElement('button');
+  updateBtn.id = 'updateBtn';
+  updateBtn.textContent = 'Check for Updates';
+  extensionSection.appendChild(updateBtn);
+
   // Assemble menu
   menu.appendChild(header);
   menu.appendChild(masterGroup);
@@ -409,30 +390,29 @@
 
   // Event handlers
 
-  // Master toggle: persist and reload both ON/OFF; disables all styling while keeping GUI
+  // Master toggle: persist and reload both ON/OFF (disables everything except GUI)
   masterToggleEl.addEventListener('change', () => {
     setLS(LS.masterToggle, masterToggleEl.checked);
     location.reload();
   });
 
-  // Link color changes (live, unless gamer party is on)
+  // Link color (live update unless gamer party is ON)
   linkPicker.addEventListener('input', () => {
     setLS(LS.linkColor, linkPicker.value);
     if (masterToggleEl.checked && !gamerToggle.checked) applyAllStyles();
   });
 
-  // Accent bar color + font size (live update, unless gamer party is on)
+  // Accent bar color + font size (live update unless gamer party is ON)
   function updateAccent() {
     setLS(LS.barAccent, accentPicker.value);
     setLS(LS.barFontSize, accentSize.value);
-    // Update menu border to match accent color
     menu.style.borderColor = accentPicker.value;
     if (masterToggleEl.checked && !gamerToggle.checked) applyAllStyles();
   }
   accentPicker.addEventListener('input', updateAccent);
   accentSize.addEventListener('change', updateAccent);
 
-  // Paragraph font: persist and auto-refresh on Apply
+  // Paragraph font apply: persist and auto-refresh
   fontApply.addEventListener('click', () => {
     setLS(LS.paragraphFont, fontSelect.value);
     location.reload();
@@ -456,21 +436,20 @@
     location.reload();
   });
 
-  // Keybind selector (no reload needed)
+  // Keybind selector
   keybindSelect.addEventListener('change', () => {
     const kb = keybindSelect.value.toLowerCase();
     setLS(LS.keybind, kb);
-    meta.textContent = `Toggle: ${kb.toUpperCase()} • Position: ${positionSelect.value.replace('-', ' ')}`;
+    meta.textContent = `Version ${CURRENT_VERSION} • Toggle: ${kb.toUpperCase()} • Position: ${positionSelect.value.replace('-', ' ')}`;
   });
 
-  // Position selector (apply immediately without reload)
+  // Position selector (apply immediately)
   function applyMenuPosition(pos) {
-    // reset
     menu.style.left = '';
     menu.style.right = '';
     if (pos === 'top-left') menu.style.left = '12px';
     else menu.style.right = '12px';
-    meta.textContent = `Toggle: ${(localStorage.getItem(LS.keybind) || DEFAULTS.keybind).toUpperCase()} • Position: ${pos.replace('-', ' ')}`;
+    meta.textContent = `Version ${CURRENT_VERSION} • Toggle: ${(localStorage.getItem(LS.keybind) || DEFAULTS.keybind).toUpperCase()} • Position: ${pos.replace('-', ' ')}`;
   }
   positionSelect.addEventListener('change', () => {
     const pos = positionSelect.value;
@@ -479,17 +458,11 @@
   });
   applyMenuPosition(persisted.menuPosition);
 
-  // Toggle menu visibility by keybind (GUI always available even if master OFF)
+  // Toggle menu visibility by keybind (GUI available even if master OFF)
   document.addEventListener('keydown', (e) => {
-    const target = e.target;
-    const isTyping = target && (
-      target.tagName === 'INPUT' ||
-      target.tagName === 'TEXTAREA' ||
-      target.tagName === 'SELECT' ||
-      target.isContentEditable
-    );
-    if (isTyping) return;
-
+    const t = e.target;
+    const typing = t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable);
+    if (typing) return;
     const kb = (localStorage.getItem(LS.keybind) || DEFAULTS.keybind).toLowerCase();
     if (e.key && e.key.toLowerCase() === kb) {
       const newDisplay = (menu.style.display === 'none') ? 'flex' : 'none';
@@ -501,4 +474,39 @@
   // Persist menu visibility across reloads
   const visiblePersisted = localStorage.getItem(LS.menuVisible);
   menu.style.display = (visiblePersisted === 'false') ? 'none' : 'flex';
+
+  // Update checker
+  async function checkForUpdates() {
+    try {
+      const resp = await fetch('https://raw.githubusercontent.com/thelwc227/gibbon-ui-tweaks/main/script.js', { cache: 'no-store' });
+      if (!resp.ok) { alert('Unable to check updates (network error).'); return; }
+      const text = await resp.text();
+      const match = text.match(/@version\s+([0-9.]+)/);
+      if (!match) { alert('Could not determine remote version.'); return; }
+      const remoteVersion = match[1];
+
+      function cmp(a, b) {
+        const pa = a.split('.').map(n => parseInt(n, 10));
+        const pb = b.split('.').map(n => parseInt(n, 10));
+        const len = Math.max(pa.length, pb.length);
+        for (let i = 0; i < len; i++) {
+          const va = pa[i] || 0, vb = pb[i] || 0;
+          if (va > vb) return 1;
+          if (va < vb) return -1;
+        }
+        return 0;
+      }
+
+      if (cmp(remoteVersion, CURRENT_VERSION) > 0) {
+        if (confirm(`A newer version (${remoteVersion}) is available. Redirect to GitHub repo?`)) {
+          window.location.href = 'https://github.com/thelwc227/gibbon-ui-tweaks/tree/main';
+        }
+      } else {
+        alert('You are using the latest version.');
+      }
+    } catch (e) {
+      alert('Error checking updates: ' + (e && e.message ? e.message : e));
+    }
+  }
+  updateBtn.addEventListener('click', checkForUpdates);
 })();
