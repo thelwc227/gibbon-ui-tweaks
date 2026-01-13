@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         gibbon-ui-tweaks
 // @namespace    http://tampermonkey.net/
-// @version      1.8
-// @description  Popup with Global, Timetable, Extension categories; Master toggle; link color; accent bar color+size; paragraph font (incl. Comic Sans MS); Gamer Party Mode; Better Tables; Endless Stream (Lazy Load + Auto Load More on Stream page) + Return to Top button; squared corners; better timetable; keybind selector; popup position; update checker. Fully merged.
+// @version      2.0
+// @description  Popup with Global, Timetable, Extension categories; Master toggle; link color; accent bar color+size; paragraph font (incl. Comic Sans MS); Gamer Party Mode; Better Tables; Endless Stream (Lazy Load + Auto Load More on Stream page) + Return to Top button; squared corners; better timetable; keybind selector; popup position; update checker; Custom PFP replacement across site. Fully merged.
 // @match        https://gibbon.ichk.edu.hk/*
 // @grant        none
 // ==/UserScript==
@@ -10,7 +10,7 @@
 (function () {
   'use strict';
 
-  const CURRENT_VERSION = '1.8';
+  const CURRENT_VERSION = '2.0';
 
   const LS = {
     masterToggle: 'gibbon_masterToggle',
@@ -25,7 +25,8 @@
     menuVisible: 'gibbon_menuVisible',
     menuPosition: 'gibbon_menuPosition',
     streamEnhance: 'gibbon_streamEnhance',
-    betterTables: 'gibbon_betterTables'
+    betterTables: 'gibbon_betterTables',
+    customPFP: 'gibbon_customPFP'
   };
 
   const DEFAULTS = {
@@ -41,7 +42,8 @@
     menuVisible: 'true',
     menuPosition: 'top-right',
     streamEnhance: false, // default OFF
-    betterTables: false   // default OFF
+    betterTables: false,  // default OFF
+    customPFP: ''         // default empty
   };
 
   const persisted = {
@@ -57,7 +59,8 @@
     menuVisible: localStorage.getItem(LS.menuVisible) ?? DEFAULTS.menuVisible,
     menuPosition: localStorage.getItem(LS.menuPosition) || DEFAULTS.menuPosition,
     streamEnhance: localStorage.getItem(LS.streamEnhance) === 'true' || DEFAULTS.streamEnhance,
-    betterTables: localStorage.getItem(LS.betterTables) === 'true' || DEFAULTS.betterTables
+    betterTables: localStorage.getItem(LS.betterTables) === 'true' || DEFAULTS.betterTables,
+    customPFP: localStorage.getItem(LS.customPFP) || DEFAULTS.customPFP
   };
 
   function setLS(key, value) { localStorage.setItem(key, value); }
@@ -106,7 +109,7 @@
     #controlMenu .group { display: flex; flex-direction: column; gap: 6px; }
     #controlMenu .row { display: flex; gap: 8px; align-items: center; }
     #controlMenu label, #controlMenu span { font-weight: 600; color: #333; }
-    #controlMenu input[type="color"], #controlMenu select, #controlMenu button {
+    #controlMenu input[type="color"], #controlMenu select, #controlMenu button, #controlMenu input[type="text"] {
       height: 30px; border: 1px solid #ccc; border-radius: 8px; background: #fff; padding: 4px 8px; font-size: 13px;
     }
     #controlMenu button { cursor: pointer; background: #f7f7f7; font-weight: 700; }
@@ -125,6 +128,14 @@
         font-family: '${persisted.paragraphFont}', sans-serif !important;
         font-size: 17px !important;
         line-height: 1.2 !important;
+      }
+
+      /* Default ON: links only underline on hover (no toggle) */
+      main a, .content a, article a, p a {
+        text-decoration: none !important;
+      }
+      main a:hover, .content a:hover, article a:hover, p a:hover {
+        text-decoration: underline !important;
       }
     `;
 
@@ -181,19 +192,16 @@
       `;
     }
 
-    // Better Tables (global)
+    // Better Tables (global) — typography/spacing only, so Gamer Party headers always win when ON.
     if (persisted.betterTables) {
       css += `
         th {
           font-family: 'Lexend', sans-serif !important;
-          font-size: 15px !important;
           padding: 12px !important;
           letter-spacing: 0.5px !important;
           font-weight: bold !important;
           text-transform: uppercase !important;
           border-bottom: 3px solid #555 !important;
-          background-color: #007acc !important;
-          color: #fff !important;
         }
         tr:nth-child(even) {
           background-color: #f5f5f5 !important;
@@ -330,6 +338,28 @@
   betterTablesHint.textContent = 'Styles table headers and zebra-stripes rows.';
   betterTablesGroup.appendChild(betterTablesHint);
 
+  // Custom PFP input (for avatar images across site)
+  const pfpGroup = document.createElement('div');
+  pfpGroup.className = 'group';
+  const pfpLabel = document.createElement('span');
+  pfpLabel.textContent = 'Custom PFP';
+  const pfpRow = document.createElement('div');
+  pfpRow.className = 'row';
+  const pfpInput = document.createElement('input');
+  pfpInput.type = 'text';
+  pfpInput.placeholder = 'https://example.com/avatar.jpg';
+  pfpInput.value = persisted.customPFP;
+  const pfpApply = document.createElement('button');
+  pfpApply.textContent = 'Apply';
+  const pfpHint = document.createElement('div');
+  pfpHint.className = 'hint';
+  pfpHint.textContent = 'Replaces all <img class="w-full -mt-1"> profile images site-wide with your URL.';
+  pfpRow.appendChild(pfpInput);
+  pfpRow.appendChild(pfpApply);
+  pfpGroup.appendChild(pfpLabel);
+  pfpGroup.appendChild(pfpRow);
+  pfpGroup.appendChild(pfpHint);
+
   // Endless Stream toggle + Return to Top button
   const streamGroup = document.createElement('label');
   streamGroup.className = 'group';
@@ -363,6 +393,7 @@
   globalSection.appendChild(fontGroup);
   globalSection.appendChild(gamerGroup);
   globalSection.appendChild(betterTablesGroup);
+  globalSection.appendChild(pfpGroup);
   globalSection.appendChild(streamGroup);
 
   // TIMETABLE SECTION
@@ -501,6 +532,13 @@
     location.reload();
   });
 
+  // Custom PFP apply
+  pfpApply.addEventListener('click', () => {
+    const url = pfpInput.value.trim();
+    setLS(LS.customPFP, url);
+    location.reload();
+  });
+
   // Endless Stream toggle: persist and reload to initialize/disable on Stream page
   streamToggle.addEventListener('change', () => {
     setLS(LS.streamEnhance, streamToggle.checked);
@@ -593,6 +631,38 @@
   }
   updateBtn.addEventListener('click', checkForUpdates);
 
+  // --- Custom PFP replacement across site ---
+  // Replaces the src of all <img class="w-full -mt-1"> (avatar images) with the user-specified URL.
+  function replaceCustomPFP(scope = document) {
+    if (!persisted.masterToggle) return;
+    const url = persisted.customPFP && persisted.customPFP.trim();
+    if (!url) return;
+
+    const imgs = scope.querySelectorAll('img.w-full.-mt-1');
+    imgs.forEach(img => {
+      img.src = url;
+    });
+  }
+
+  function runCustomPFPInitial() {
+    replaceCustomPFP(document);
+  }
+
+  const pfpObserver = new MutationObserver(mutations => {
+    mutations.forEach(mutation => {
+      mutation.addedNodes.forEach(node => {
+        if (!(node instanceof Element)) return;
+        if (node.matches && node.matches('img.w-full.-mt-1')) {
+          replaceCustomPFP(node.parentNode || document);
+        } else {
+          const imgs = node.querySelectorAll && node.querySelectorAll('img.w-full.-mt-1');
+          if (imgs && imgs.length) replaceCustomPFP(node);
+        }
+      });
+    });
+  });
+  pfpObserver.observe(document.body, { childList: true, subtree: true });
+
   // --- Endless Stream (Lazy Load + Auto Load More) ---
   function isExactStreamPage() {
     // Exact page: https://gibbon.ichk.edu.hk/index.php?q=%2Fmodules%2FStream%2Fstream.php
@@ -639,6 +709,9 @@
       return observer;
     }
 
+    // Ensure Custom PFP runs before lazy prep (in case avatars appear within Stream)
+    replaceCustomPFP(document);
+
     prepareImages();
     const imgObserver = setupLazyLoading();
 
@@ -646,6 +719,10 @@
       mutations.forEach(mutation => {
         mutation.addedNodes.forEach(node => {
           if (!(node instanceof Element)) return;
+
+          // Apply Custom PFP to any new avatars within Stream content
+          replaceCustomPFP(node);
+
           if (node.tagName === 'IMG') {
             if (!node.dataset.lazyPrepared) {
               if (node.src) {
@@ -726,10 +803,14 @@
     }, 200);
   }
 
-  // Initialize Endless Stream when DOM is ready
-  if (document.readyState === 'complete' || document.readyState === 'interactive') {
+  // Initialize features when DOM is ready
+  function onReady() {
+    runCustomPFPInitial();
     initEndlessStream();
+  }
+  if (document.readyState === 'complete' || document.readyState === 'interactive') {
+    onReady();
   } else {
-    document.addEventListener('DOMContentLoaded', initEndlessStream, { once: true });
+    document.addEventListener('DOMContentLoaded', onReady, { once: true });
   }
 })();
