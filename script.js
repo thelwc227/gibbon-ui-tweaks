@@ -10,7 +10,7 @@
 (function () {
   'use strict';
 
-  const CURRENT_VERSION = '1.0';
+  const CURRENT_VERSION = '1.1';
 
   const LS = {
     masterToggle: 'gibbon_masterToggle',
