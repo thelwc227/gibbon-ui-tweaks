@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         gibbon-ui-tweaks
 // @namespace    http://tampermonkey.net/
-// @version      1.1
-// @description  Full-featured popup with Global, Timetable, Extension categories. Master toggle disables all customizations except GUI (reloads on ON/OFF). Features: link color, accent bar color + font size, paragraph font (incl. notes span, Comic Sans MS), squared corners, better timetable (inline-block fix), keybind selector, popup position selector, Gamer Party Mode (smooth RGB animation for accent bar + links). Auto reload when Paragraph Font Apply, Squared Corners, Better Timetable toggles are changed. Includes update checker.
+// @version      1.8
+// @description  Popup with Global, Timetable, Extension categories; Master toggle; link color; accent bar color+size; paragraph font (incl. Comic Sans MS); Gamer Party Mode; Better Tables; Endless Stream (Lazy Load + Auto Load More on Stream page) + Return to Top button; squared corners; better timetable; keybind selector; popup position; update checker. Fully merged.
 // @match        https://gibbon.ichk.edu.hk/*
 // @grant        none
 // ==/UserScript==
@@ -10,7 +10,7 @@
 (function () {
   'use strict';
 
-  const CURRENT_VERSION = '1.1';
+  const CURRENT_VERSION = '1.8';
 
   const LS = {
     masterToggle: 'gibbon_masterToggle',
@@ -23,7 +23,9 @@
     gamerParty: 'gibbon_gamerParty',
     keybind: 'gibbon_keybind',
     menuVisible: 'gibbon_menuVisible',
-    menuPosition: 'gibbon_menuPosition'
+    menuPosition: 'gibbon_menuPosition',
+    streamEnhance: 'gibbon_streamEnhance',
+    betterTables: 'gibbon_betterTables'
   };
 
   const DEFAULTS = {
@@ -37,7 +39,9 @@
     gamerParty: false,
     keybind: 'p',
     menuVisible: 'true',
-    menuPosition: 'top-right'
+    menuPosition: 'top-right',
+    streamEnhance: false, // default OFF
+    betterTables: false   // default OFF
   };
 
   const persisted = {
@@ -51,7 +55,9 @@
     gamerParty: localStorage.getItem(LS.gamerParty) === 'true' || DEFAULTS.gamerParty,
     keybind: (localStorage.getItem(LS.keybind) || DEFAULTS.keybind).toLowerCase(),
     menuVisible: localStorage.getItem(LS.menuVisible) ?? DEFAULTS.menuVisible,
-    menuPosition: localStorage.getItem(LS.menuPosition) || DEFAULTS.menuPosition
+    menuPosition: localStorage.getItem(LS.menuPosition) || DEFAULTS.menuPosition,
+    streamEnhance: localStorage.getItem(LS.streamEnhance) === 'true' || DEFAULTS.streamEnhance,
+    betterTables: localStorage.getItem(LS.betterTables) === 'true' || DEFAULTS.betterTables
   };
 
   function setLS(key, value) { localStorage.setItem(key, value); }
@@ -175,6 +181,26 @@
       `;
     }
 
+    // Better Tables (global)
+    if (persisted.betterTables) {
+      css += `
+        th {
+          font-family: 'Lexend', sans-serif !important;
+          font-size: 15px !important;
+          padding: 12px !important;
+          letter-spacing: 0.5px !important;
+          font-weight: bold !important;
+          text-transform: uppercase !important;
+          border-bottom: 3px solid #555 !important;
+          background-color: #007acc !important;
+          color: #fff !important;
+        }
+        tr:nth-child(even) {
+          background-color: #f5f5f5 !important;
+        }
+      `;
+    }
+
     upsertStyle('customStyles', css);
   }
   applyAllStyles();
@@ -195,7 +221,6 @@
   meta.textContent = `Version ${CURRENT_VERSION} • Toggle: ${persisted.keybind.toUpperCase()} • Position: ${persisted.menuPosition.replace('-', ' ')}`;
   header.appendChild(title);
   header.appendChild(meta);
-  menu.appendChild(header);
 
   // Master toggle
   const masterGroup = document.createElement('label');
@@ -210,14 +235,12 @@
   masterRow.appendChild(masterText);
   masterRow.appendChild(masterToggleEl);
   masterGroup.appendChild(masterRow);
-  menu.appendChild(masterGroup);
 
   // GLOBAL SECTION
   const globalSection = document.createElement('div');
   globalSection.className = 'section';
   const globalHeader = document.createElement('h4');
   globalHeader.textContent = 'Global';
-  globalSection.appendChild(globalHeader);
 
   // Link color
   const linkGroup = document.createElement('div');
@@ -289,17 +312,64 @@
   gamerRow.appendChild(gamerToggle);
   gamerGroup.appendChild(gamerRow);
 
+  // Better Tables toggle
+  const betterTablesGroup = document.createElement('label');
+  betterTablesGroup.className = 'group';
+  const betterTablesRow = document.createElement('div');
+  betterTablesRow.className = 'row';
+  const betterTablesText = document.createElement('span');
+  betterTablesText.textContent = 'Better Tables';
+  const betterTablesToggle = document.createElement('input');
+  betterTablesToggle.type = 'checkbox';
+  betterTablesToggle.checked = persisted.betterTables;
+  betterTablesRow.appendChild(betterTablesText);
+  betterTablesRow.appendChild(betterTablesToggle);
+  betterTablesGroup.appendChild(betterTablesRow);
+  const betterTablesHint = document.createElement('div');
+  betterTablesHint.className = 'hint';
+  betterTablesHint.textContent = 'Styles table headers and zebra-stripes rows.';
+  betterTablesGroup.appendChild(betterTablesHint);
+
+  // Endless Stream toggle + Return to Top button
+  const streamGroup = document.createElement('label');
+  streamGroup.className = 'group';
+  const streamRow = document.createElement('div');
+  streamRow.className = 'row';
+  const streamText = document.createElement('span');
+  streamText.textContent = 'Endless Stream';
+  const streamToggle = document.createElement('input');
+  streamToggle.type = 'checkbox';
+  streamToggle.checked = persisted.streamEnhance;
+  streamRow.appendChild(streamText);
+  streamRow.appendChild(streamToggle);
+  streamGroup.appendChild(streamRow);
+
+  const streamHint = document.createElement('div');
+  streamHint.className = 'hint';
+  streamHint.textContent = 'Runs on Stream page only. Lazy loads images + auto-clicks Load More.';
+  streamGroup.appendChild(streamHint);
+
+  const returnBtn = document.createElement('button');
+  returnBtn.textContent = 'Return to Top';
+  returnBtn.addEventListener('click', () => {
+    window.location.href = 'https://gibbon.ichk.edu.hk/index.php?q=%2Fmodules%2FStream%2Fstream.php#top';
+  });
+  streamGroup.appendChild(returnBtn);
+
+  // Append Global section items
+  globalSection.appendChild(globalHeader);
   globalSection.appendChild(linkGroup);
   globalSection.appendChild(accentGroup);
   globalSection.appendChild(fontGroup);
   globalSection.appendChild(gamerGroup);
+  globalSection.appendChild(betterTablesGroup);
+  globalSection.appendChild(streamGroup);
 
   // TIMETABLE SECTION
   const timetableSection = document.createElement('div');
   timetableSection.className = 'section';
   const timetableHeader = document.createElement('h4');
   timetableHeader.textContent = 'Timetable';
-  timetableSection.appendChild(timetableHeader);
 
   const squareGroup = document.createElement('label');
   squareGroup.className = 'group';
@@ -321,6 +391,7 @@
   betterGroup.appendChild(betterText);
   betterGroup.appendChild(betterToggle);
 
+  timetableSection.appendChild(timetableHeader);
   timetableSection.appendChild(squareGroup);
   timetableSection.appendChild(betterGroup);
 
@@ -329,7 +400,6 @@
   extensionSection.className = 'section';
   const extensionHeader = document.createElement('h4');
   extensionHeader.textContent = 'Extension';
-  extensionSection.appendChild(extensionHeader);
 
   // Keybind selector
   const keybindGroup = document.createElement('div');
@@ -371,6 +441,7 @@
   positionGroup.appendChild(positionSelect);
   positionGroup.appendChild(positionHint);
 
+  extensionSection.appendChild(extensionHeader);
   extensionSection.appendChild(keybindGroup);
   extensionSection.appendChild(positionGroup);
 
@@ -421,6 +492,18 @@
   // Gamer Party Mode: persist and reload to cleanly apply/remove animation
   gamerToggle.addEventListener('change', () => {
     setLS(LS.gamerParty, gamerToggle.checked);
+    location.reload();
+  });
+
+  // Better Tables toggle
+  betterTablesToggle.addEventListener('change', () => {
+    setLS(LS.betterTables, betterTablesToggle.checked);
+    location.reload();
+  });
+
+  // Endless Stream toggle: persist and reload to initialize/disable on Stream page
+  streamToggle.addEventListener('change', () => {
+    setLS(LS.streamEnhance, streamToggle.checked);
     location.reload();
   });
 
@@ -509,4 +592,144 @@
     }
   }
   updateBtn.addEventListener('click', checkForUpdates);
+
+  // --- Endless Stream (Lazy Load + Auto Load More) ---
+  function isExactStreamPage() {
+    // Exact page: https://gibbon.ichk.edu.hk/index.php?q=%2Fmodules%2FStream%2Fstream.php
+    const u = new URL(window.location.href);
+    const q = u.searchParams.get('q');
+    return u.pathname === '/index.php' && decodeURIComponent(q || '') === '/modules/Stream/stream.php';
+  }
+
+  function initEndlessStream() {
+    if (!persisted.masterToggle) return;
+    if (!persisted.streamEnhance) return;
+    if (!isExactStreamPage()) return;
+
+    // Lazy Load Images
+    function prepareImages(scope = document) {
+      const imgs = scope.querySelectorAll('img');
+      imgs.forEach(img => {
+        if (img.dataset.lazyPrepared) return;
+        if (img.src) {
+          img.dataset.src = img.src;
+          img.removeAttribute('src');
+        }
+        img.dataset.lazyPrepared = true;
+      });
+    }
+
+    function setupLazyLoading() {
+      const observer = new IntersectionObserver(entries => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            const img = entry.target;
+            if (img.dataset.src) {
+              img.src = img.dataset.src;
+              observer.unobserve(img);
+            }
+          }
+        });
+      }, {
+        rootMargin: '120px',
+        threshold: 0.05
+      });
+
+      document.querySelectorAll('img[data-src]').forEach(img => observer.observe(img));
+      return observer;
+    }
+
+    prepareImages();
+    const imgObserver = setupLazyLoading();
+
+    const mutationObserver = new MutationObserver(mutations => {
+      mutations.forEach(mutation => {
+        mutation.addedNodes.forEach(node => {
+          if (!(node instanceof Element)) return;
+          if (node.tagName === 'IMG') {
+            if (!node.dataset.lazyPrepared) {
+              if (node.src) {
+                node.dataset.src = node.src;
+                node.removeAttribute('src');
+              }
+              node.dataset.lazyPrepared = true;
+              if (node.dataset.src) imgObserver.observe(node);
+            }
+          } else {
+            const imgs = node.querySelectorAll('img');
+            if (imgs.length) {
+              prepareImages(node);
+              imgs.forEach(img => { if (img.dataset.src) imgObserver.observe(img); });
+            }
+          }
+        });
+      });
+    });
+    mutationObserver.observe(document.body, { childList: true, subtree: true });
+
+    // Auto Click "Load More"
+    function clickElement(el) {
+      el.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
+      el.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+      el.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+      el.click();
+    }
+
+    function setupAutoLoadMore() {
+      const loadBtn = document.getElementById('loadPosts');
+      if (!loadBtn) return null;
+      if (loadBtn.dataset.autoLoadObserved === 'true') return null;
+      loadBtn.dataset.autoLoadObserved = 'true';
+
+      const observer = new IntersectionObserver(entries => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            requestAnimationFrame(() => clickElement(loadBtn));
+          }
+        });
+      }, {
+        rootMargin: '300px',
+        threshold: 0.01
+      });
+
+      observer.observe(loadBtn);
+      return observer;
+    }
+
+    let loadMoreObserver = setupAutoLoadMore();
+
+    const btnObserver = new MutationObserver(() => {
+      const btn = document.getElementById('loadPosts');
+      if (btn && btn.dataset.autoLoadObserved !== 'true') {
+        if (loadMoreObserver) loadMoreObserver.disconnect();
+        loadMoreObserver = setupAutoLoadMore();
+      }
+    });
+    btnObserver.observe(document.body, { childList: true, subtree: true });
+
+    const initialBtn = document.getElementById('loadPosts');
+    if (initialBtn) {
+      const rect = initialBtn.getBoundingClientRect();
+      const inViewport = rect.top < (window.innerHeight + 300) && rect.bottom > 0;
+      if (inViewport) clickElement(initialBtn);
+    }
+
+    // Fallback polling for robustness
+    let pollCount = 0;
+    const poll = setInterval(() => {
+      if (pollCount++ > 100) { clearInterval(poll); return; }
+      const btn = document.getElementById('loadPosts');
+      if (btn && btn.dataset.autoLoadObserved !== 'true') {
+        if (loadMoreObserver) loadMoreObserver.disconnect();
+        loadMoreObserver = setupAutoLoadMore();
+      }
+    }, 200);
+  }
+
+  // Initialize Endless Stream when DOM is ready
+  if (document.readyState === 'complete' || document.readyState === 'interactive') {
+    initEndlessStream();
+  } else {
+    document.addEventListener('DOMContentLoaded', initEndlessStream, { once: true });
+  }
 })();
