@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         gibbon-ui-tweaks
 // @namespace    http://tampermonkey.net/
-// @version      2.0
-// @description  Popup with Global, Timetable, Extension categories; Master toggle; link color; accent bar color+size; paragraph font (incl. Comic Sans MS); Gamer Party Mode; Better Tables; Endless Stream (Lazy Load + Auto Load More on Stream page) + Return to Top button; squared corners; better timetable; keybind selector; popup position; update checker; Custom PFP replacement across site. Fully merged.
+// @version      2.4
+// @description  Popup with Global, Timetable, Extension categories; Master toggle; link color; accent bar color+size; paragraph font (incl. Comic Sans MS); Gamer Party Mode; Better Tables; Endless Stream (Lazy Load + Auto Load More) + Return to Top; squared corners; better timetable; keybind selector; popup position (reloads page); update checker; Custom PFP (only override user's own avatar <a> block when img src matches). Fully merged.
 // @match        https://gibbon.ichk.edu.hk/*
 // @grant        none
 // ==/UserScript==
@@ -10,7 +10,7 @@
 (function () {
   'use strict';
 
-  const CURRENT_VERSION = '2.0';
+  const CURRENT_VERSION = '2.4';
 
   const LS = {
     masterToggle: 'gibbon_masterToggle',
@@ -41,9 +41,9 @@
     keybind: 'p',
     menuVisible: 'true',
     menuPosition: 'top-right',
-    streamEnhance: false, // default OFF
-    betterTables: false,  // default OFF
-    customPFP: ''         // default empty
+    streamEnhance: false,
+    betterTables: false,
+    customPFP: ''
   };
 
   const persisted = {
@@ -77,10 +77,8 @@
   // Base CSS for menu UI and RGB animation
   upsertStyle('gibbonUiBase', `
     @import url('https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;700&display=swap');
-
     @property --rgbHue { syntax: '<number>'; inherits: false; initial-value: 0; }
     @keyframes rgbCycle { from { --rgbHue: 0; } to { --rgbHue: 360; } }
-
     #controlMenu {
       position: fixed;
       top: 12px;
@@ -192,7 +190,7 @@
       `;
     }
 
-    // Better Tables (global) — typography/spacing only, so Gamer Party headers always win when ON.
+    // Better Tables (global) — typography/spacing only, so Gamer Party headers win when ON.
     if (persisted.betterTables) {
       css += `
         th {
@@ -338,7 +336,7 @@
   betterTablesHint.textContent = 'Styles table headers and zebra-stripes rows.';
   betterTablesGroup.appendChild(betterTablesHint);
 
-  // Custom PFP input (for avatar images across site)
+  // Custom PFP input (conditionally overrides only user's own avatar <a> block)
   const pfpGroup = document.createElement('div');
   pfpGroup.className = 'group';
   const pfpLabel = document.createElement('span');
@@ -353,7 +351,7 @@
   pfpApply.textContent = 'Apply';
   const pfpHint = document.createElement('div');
   pfpHint.className = 'hint';
-  pfpHint.textContent = 'Replaces all <img class="w-full -mt-1"> profile images site-wide with your URL.';
+  pfpHint.textContent = 'Only overrides your own avatar <a> block if its <img> src matches your original PFP.';
   pfpRow.appendChild(pfpInput);
   pfpRow.appendChild(pfpApply);
   pfpGroup.appendChild(pfpLabel);
@@ -376,7 +374,7 @@
 
   const streamHint = document.createElement('div');
   streamHint.className = 'hint';
-  streamHint.textContent = 'Runs on Stream page only. Lazy loads images + auto-clicks Load More.';
+  streamHint.textContent = 'Stream page only. Lazy loads images + auto-clicks Load More.';
   streamGroup.appendChild(streamHint);
 
   const returnBtn = document.createElement('button');
@@ -452,7 +450,7 @@
   keybindGroup.appendChild(keybindSelect);
   keybindGroup.appendChild(keybindHint);
 
-  // Popup position selector
+  // Popup position selector (reload page on change)
   const positionGroup = document.createElement('div');
   positionGroup.className = 'group';
   const positionLabel = document.createElement('span');
@@ -467,7 +465,7 @@
   positionSelect.value = persisted.menuPosition;
   const positionHint = document.createElement('div');
   positionHint.className = 'hint';
-  positionHint.textContent = 'Choose where the popup menu docks.';
+  positionHint.textContent = 'Changing this reloads the page.';
   positionGroup.appendChild(positionLabel);
   positionGroup.appendChild(positionSelect);
   positionGroup.appendChild(positionHint);
@@ -492,7 +490,7 @@
 
   // Event handlers
 
-  // Master toggle: persist and reload both ON/OFF (disables everything except GUI)
+  // Master toggle: persist and reload
   masterToggleEl.addEventListener('change', () => {
     setLS(LS.masterToggle, masterToggleEl.checked);
     location.reload();
@@ -520,7 +518,7 @@
     location.reload();
   });
 
-  // Gamer Party Mode: persist and reload to cleanly apply/remove animation
+  // Gamer Party Mode: persist and reload
   gamerToggle.addEventListener('change', () => {
     setLS(LS.gamerParty, gamerToggle.checked);
     location.reload();
@@ -539,19 +537,19 @@
     location.reload();
   });
 
-  // Endless Stream toggle: persist and reload to initialize/disable on Stream page
+  // Endless Stream toggle
   streamToggle.addEventListener('change', () => {
     setLS(LS.streamEnhance, streamToggle.checked);
     location.reload();
   });
 
-  // Squared corners: persist and auto-refresh
+  // Squared corners
   squareToggle.addEventListener('change', () => {
     setLS(LS.squareToggle, squareToggle.checked);
     location.reload();
   });
 
-  // Better timetable: persist and auto-refresh
+  // Better timetable
   betterToggle.addEventListener('change', () => {
     setLS(LS.betterToggle, betterToggle.checked);
     location.reload();
@@ -564,20 +562,12 @@
     meta.textContent = `Version ${CURRENT_VERSION} • Toggle: ${kb.toUpperCase()} • Position: ${positionSelect.value.replace('-', ' ')}`;
   });
 
-  // Position selector (apply immediately)
-  function applyMenuPosition(pos) {
-    menu.style.left = '';
-    menu.style.right = '';
-    if (pos === 'top-left') menu.style.left = '12px';
-    else menu.style.right = '12px';
-    meta.textContent = `Version ${CURRENT_VERSION} • Toggle: ${(localStorage.getItem(LS.keybind) || DEFAULTS.keybind).toUpperCase()} • Position: ${pos.replace('-', ' ')}`;
-  }
+  // Position selector: persist and reload
   positionSelect.addEventListener('change', () => {
     const pos = positionSelect.value;
     setLS(LS.menuPosition, pos);
-    applyMenuPosition(pos);
+    location.reload();
   });
-  applyMenuPosition(persisted.menuPosition);
 
   // Toggle menu visibility by keybind (GUI available even if master OFF)
   document.addEventListener('keydown', (e) => {
@@ -631,20 +621,39 @@
   }
   updateBtn.addEventListener('click', checkForUpdates);
 
-  // --- Custom PFP replacement across site ---
-  // Replaces the src of all <img class="w-full -mt-1"> (avatar images) with the user-specified URL.
+  // --- Custom PFP replacement (only override user's own avatar <a> block when img src matches) ---
+  let originalPFP = null;
+
+  function detectOriginalPFP(scope = document) {
+    // Find any <a> with a nested <img.w-full.-mt-1> (user's avatar block in header/sidebar)
+    const userAnchorImg = scope.querySelector('a[href*="gibbonPersonID="] img.w-full.-mt-1');
+    if (userAnchorImg) originalPFP = userAnchorImg.src;
+  }
+
   function replaceCustomPFP(scope = document) {
     if (!persisted.masterToggle) return;
     const url = persisted.customPFP && persisted.customPFP.trim();
-    if (!url) return;
+    if (!url || !originalPFP) return;
 
-    const imgs = scope.querySelectorAll('img.w-full.-mt-1');
-    imgs.forEach(img => {
-      img.src = url;
+    // Only override <a> blocks whose nested <img.w-full.-mt-1> src matches originalPFP
+    const targetImgs = scope.querySelectorAll('a[href*="gibbonPersonID="] img.w-full.-mt-1');
+    targetImgs.forEach(img => {
+      if (img.src === originalPFP) {
+        img.src = url;
+      }
+    });
+
+    // Also check card-style blocks that might mirror the same src (optional safeguard)
+    const cardImgs = scope.querySelectorAll('img.inline-block.shadow.bg-white.border.border-gray-600.w-20.lg\\:w-24.p-1');
+    cardImgs.forEach(img => {
+      if (img.src === originalPFP) {
+        img.src = url;
+      }
     });
   }
 
   function runCustomPFPInitial() {
+    detectOriginalPFP(document);
     replaceCustomPFP(document);
   }
 
@@ -652,12 +661,12 @@
     mutations.forEach(mutation => {
       mutation.addedNodes.forEach(node => {
         if (!(node instanceof Element)) return;
-        if (node.matches && node.matches('img.w-full.-mt-1')) {
-          replaceCustomPFP(node.parentNode || document);
-        } else {
-          const imgs = node.querySelectorAll && node.querySelectorAll('img.w-full.-mt-1');
-          if (imgs && imgs.length) replaceCustomPFP(node);
+        // If a new anchor/avatar appears, re-detect and conditionally replace
+        const newUserImg = node.querySelector && node.querySelector('a[href*="gibbonPersonID="] img.w-full.-mt-1');
+        if (newUserImg && !originalPFP) {
+          originalPFP = newUserImg.src;
         }
+        replaceCustomPFP(node);
       });
     });
   });
@@ -665,7 +674,6 @@
 
   // --- Endless Stream (Lazy Load + Auto Load More) ---
   function isExactStreamPage() {
-    // Exact page: https://gibbon.ichk.edu.hk/index.php?q=%2Fmodules%2FStream%2Fstream.php
     const u = new URL(window.location.href);
     const q = u.searchParams.get('q');
     return u.pathname === '/index.php' && decodeURIComponent(q || '') === '/modules/Stream/stream.php';
@@ -700,16 +708,13 @@
             }
           }
         });
-      }, {
-        rootMargin: '120px',
-        threshold: 0.05
-      });
+      }, { rootMargin: '120px', threshold: 0.05 });
 
       document.querySelectorAll('img[data-src]').forEach(img => observer.observe(img));
       return observer;
     }
 
-    // Ensure Custom PFP runs before lazy prep (in case avatars appear within Stream)
+    // Ensure Custom PFP runs before lazy prep (if avatars appear within Stream)
     replaceCustomPFP(document);
 
     prepareImages();
@@ -764,10 +769,7 @@
             requestAnimationFrame(() => clickElement(loadBtn));
           }
         });
-      }, {
-        rootMargin: '300px',
-        threshold: 0.01
-      });
+      }, { rootMargin: '300px', threshold: 0.01 });
 
       observer.observe(loadBtn);
       return observer;
