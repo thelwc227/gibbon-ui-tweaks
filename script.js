@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         gibbon-ui-tweaks
 // @namespace    http://tampermonkey.net/
-// @version      1.0
+// @version      1.1
 // @description  Full-featured popup with Global, Timetable, Extension categories. Master toggle disables all customizations except GUI (reloads on ON/OFF). Features: link color, accent bar color + font size, paragraph font (incl. notes span, Comic Sans MS), squared corners, better timetable (inline-block fix), keybind selector, popup position selector, Gamer Party Mode (smooth RGB animation for accent bar + links). Auto reload when Paragraph Font Apply, Squared Corners, Better Timetable toggles are changed. Includes update checker.
 // @match        https://gibbon.ichk.edu.hk/*
 // @grant        none
