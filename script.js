@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         gibbon-ui-tweaks
 // @namespace    http://tampermonkey.net/
-// @version      2.4
-// @description  Popup with Global, Timetable, Extension categories; Master toggle; link color; accent bar color+size; paragraph font (incl. Comic Sans MS); Gamer Party Mode; Better Tables; Endless Stream (Lazy Load + Auto Load More) + Return to Top; squared corners; better timetable; keybind selector; popup position (reloads page); update checker; Custom PFP (only override user's own avatar <a> block when img src matches). Fully merged.
+// @version      2.5
+// @description  Popup with Global, Timetable, Extension categories; Master toggle; link color; accent bar color+size; paragraph font (incl. Comic Sans MS); Gamer Party Mode; Better Tables; Endless Stream (Lazy Load + Auto Load More) + Return to Top; squared corners; better timetable; keybind selector; popup position (reloads page); update checker; Custom PFP (only override user's own avatar <a> block when img src matches) + Custom Name (live update). Fully merged.
 // @match        https://gibbon.ichk.edu.hk/*
 // @grant        none
 // ==/UserScript==
@@ -10,7 +10,7 @@
 (function () {
   'use strict';
 
-  const CURRENT_VERSION = '2.4';
+  const CURRENT_VERSION = '2.5';
 
   const LS = {
     masterToggle: 'gibbon_masterToggle',
@@ -26,7 +26,8 @@
     menuPosition: 'gibbon_menuPosition',
     streamEnhance: 'gibbon_streamEnhance',
     betterTables: 'gibbon_betterTables',
-    customPFP: 'gibbon_customPFP'
+    customPFP: 'gibbon_customPFP',
+    customName: 'gibbon_customName'
   };
 
   const DEFAULTS = {
@@ -43,7 +44,8 @@
     menuPosition: 'top-right',
     streamEnhance: false,
     betterTables: false,
-    customPFP: ''
+    customPFP: '',
+    customName: ''
   };
 
   const persisted = {
@@ -60,7 +62,8 @@
     menuPosition: localStorage.getItem(LS.menuPosition) || DEFAULTS.menuPosition,
     streamEnhance: localStorage.getItem(LS.streamEnhance) === 'true' || DEFAULTS.streamEnhance,
     betterTables: localStorage.getItem(LS.betterTables) === 'true' || DEFAULTS.betterTables,
-    customPFP: localStorage.getItem(LS.customPFP) || DEFAULTS.customPFP
+    customPFP: localStorage.getItem(LS.customPFP) || DEFAULTS.customPFP,
+    customName: localStorage.getItem(LS.customName) || DEFAULTS.customName
   };
 
   function setLS(key, value) { localStorage.setItem(key, value); }
@@ -115,15 +118,24 @@
     #updateBtn { margin-top: 8px; }
   `);
 
-  // Apply site styles (respecting master toggle and gamer party mode)
+  // Apply site styles (reads fresh values each time for live updates)
   function applyAllStyles() {
     const s = document.getElementById('customStyles'); if (s) s.remove();
-    if (!persisted.masterToggle) return;
+    if (localStorage.getItem(LS.masterToggle) === 'false') return;
+
+    const linkColor = localStorage.getItem(LS.linkColor) || DEFAULTS.linkColor;
+    const barAccent = localStorage.getItem(LS.barAccent) || DEFAULTS.barAccent;
+    const barFontSize = localStorage.getItem(LS.barFontSize) || DEFAULTS.barFontSize;
+    const paragraphFont = localStorage.getItem(LS.paragraphFont) || DEFAULTS.paragraphFont;
+    const squareToggle = localStorage.getItem(LS.squareToggle) === 'true' || DEFAULTS.squareToggle;
+    const betterToggle = localStorage.getItem(LS.betterToggle) === 'true' || DEFAULTS.betterToggle;
+    const gamerParty = localStorage.getItem(LS.gamerParty) === 'true' || DEFAULTS.gamerParty;
+    const betterTables = localStorage.getItem(LS.betterTables) === 'true' || DEFAULTS.betterTables;
 
     let css = `
       p,
       span.block.text-sm.text-gray-700.overflow-x-auto {
-        font-family: '${persisted.paragraphFont}', sans-serif !important;
+        font-family: '${paragraphFont}', sans-serif !important;
         font-size: 17px !important;
         line-height: 1.2 !important;
       }
@@ -137,13 +149,13 @@
       }
     `;
 
-    if (persisted.gamerParty) {
+    if (gamerParty) {
       css += `
         th {
           --rgbHue: 0;
           background-color: hsl(var(--rgbHue), 90%, 45%) !important;
           color: #fff !important;
-          font-size: ${persisted.barFontSize} !important;
+          font-size: ${barFontSize} !important;
           animation: rgbCycle 6s linear infinite !important;
         }
         main a, .content a, article a, p a {
@@ -156,18 +168,18 @@
     } else {
       css += `
         th {
-          background-color: ${persisted.barAccent} !important;
+          background-color: ${barAccent} !important;
           color: #fff !important;
-          font-size: ${persisted.barFontSize} !important;
+          font-size: ${barFontSize} !important;
         }
-        main a, .content a, article a, p a { color: ${persisted.linkColor} !important; }
+        main a, .content a, article a, p a { color: ${linkColor} !important; }
       `;
     }
 
-    if (persisted.squareToggle) {
+    if (squareToggle) {
       css += `.ttItem { border-radius: 0 !important; }`;
     }
-    if (persisted.betterToggle) {
+    if (betterToggle) {
       css += `
         .ttItem {
           padding: 10px !important;
@@ -191,7 +203,7 @@
     }
 
     // Better Tables (global) — typography/spacing only, so Gamer Party headers win when ON.
-    if (persisted.betterTables) {
+    if (betterTables) {
       css += `
         th {
           font-family: 'Lexend', sans-serif !important;
@@ -358,6 +370,28 @@
   pfpGroup.appendChild(pfpRow);
   pfpGroup.appendChild(pfpHint);
 
+  // Custom Name input (live update)
+  const nameGroup = document.createElement('div');
+  nameGroup.className = 'group';
+  const nameLabel = document.createElement('span');
+  nameLabel.textContent = 'Custom Name';
+  const nameRow = document.createElement('div');
+  nameRow.className = 'row';
+  const nameInput = document.createElement('input');
+  nameInput.type = 'text';
+  nameInput.placeholder = 'Enter replacement name';
+  nameInput.value = persisted.customName;
+  const nameApply = document.createElement('button');
+  nameApply.textContent = 'Apply';
+  const nameHint = document.createElement('div');
+  nameHint.className = 'hint';
+  nameHint.textContent = 'Replaces your displayed name in header/sidebar.';
+  nameRow.appendChild(nameInput);
+  nameRow.appendChild(nameApply);
+  nameGroup.appendChild(nameLabel);
+  nameGroup.appendChild(nameRow);
+  nameGroup.appendChild(nameHint);
+
   // Endless Stream toggle + Return to Top button
   const streamGroup = document.createElement('label');
   streamGroup.className = 'group';
@@ -392,6 +426,7 @@
   globalSection.appendChild(gamerGroup);
   globalSection.appendChild(betterTablesGroup);
   globalSection.appendChild(pfpGroup);
+  globalSection.appendChild(nameGroup);
   globalSection.appendChild(streamGroup);
 
   // TIMETABLE SECTION
@@ -496,13 +531,13 @@
     location.reload();
   });
 
-  // Link color (live update unless gamer party is ON)
+  // Link color — live update unless gamer party is ON
   linkPicker.addEventListener('input', () => {
     setLS(LS.linkColor, linkPicker.value);
     if (masterToggleEl.checked && !gamerToggle.checked) applyAllStyles();
   });
 
-  // Accent bar color + font size (live update unless gamer party is ON)
+  // Accent bar color + font size — live update unless gamer party is ON
   function updateAccent() {
     setLS(LS.barAccent, accentPicker.value);
     setLS(LS.barFontSize, accentSize.value);
@@ -534,7 +569,15 @@
   pfpApply.addEventListener('click', () => {
     const url = pfpInput.value.trim();
     setLS(LS.customPFP, url);
-    location.reload();
+    // Live update: try immediate replacement; if not found yet, mutation observer will catch later
+    replaceCustomPFP(document);
+  });
+
+  // Custom Name apply — live update
+  nameApply.addEventListener('click', () => {
+    const newName = nameInput.value.trim();
+    setLS(LS.customName, newName);
+    replaceCustomName(document);
   });
 
   // Endless Stream toggle
@@ -631,8 +674,8 @@
   }
 
   function replaceCustomPFP(scope = document) {
-    if (!persisted.masterToggle) return;
-    const url = persisted.customPFP && persisted.customPFP.trim();
+    if (localStorage.getItem(LS.masterToggle) === 'false') return;
+    const url = (localStorage.getItem(LS.customPFP) || '').trim();
     if (!url || !originalPFP) return;
 
     // Only override <a> blocks whose nested <img.w-full.-mt-1> src matches originalPFP
@@ -652,9 +695,28 @@
     });
   }
 
+  // --- Custom Name replacement (live) ---
+  function replaceCustomName(scope = document) {
+    if (localStorage.getItem(LS.masterToggle) === 'false') return;
+    const newName = (localStorage.getItem(LS.customName) || '').trim();
+    if (!newName) return;
+
+    // Target the anchor that shows the user’s name in the header area
+    const nameAnchor = scope.querySelector(
+      'div.flex-grow.flex.items-center.justify-end.text-right.text-sm.text-purple-200 a.hidden.sm\\:block.text-purple-200'
+    );
+    if (nameAnchor) {
+      nameAnchor.textContent = newName;
+    }
+  }
+
   function runCustomPFPInitial() {
     detectOriginalPFP(document);
     replaceCustomPFP(document);
+  }
+
+  function runCustomNameInitial() {
+    replaceCustomName(document);
   }
 
   const pfpObserver = new MutationObserver(mutations => {
@@ -672,6 +734,16 @@
   });
   pfpObserver.observe(document.body, { childList: true, subtree: true });
 
+  const nameObserver = new MutationObserver(mutations => {
+    mutations.forEach(mutation => {
+      mutation.addedNodes.forEach(node => {
+        if (!(node instanceof Element)) return;
+        replaceCustomName(node);
+      });
+    });
+  });
+  nameObserver.observe(document.body, { childList: true, subtree: true });
+
   // --- Endless Stream (Lazy Load + Auto Load More) ---
   function isExactStreamPage() {
     const u = new URL(window.location.href);
@@ -680,8 +752,8 @@
   }
 
   function initEndlessStream() {
-    if (!persisted.masterToggle) return;
-    if (!persisted.streamEnhance) return;
+    if (localStorage.getItem(LS.masterToggle) === 'false') return;
+    if (localStorage.getItem(LS.streamEnhance) !== 'true') return;
     if (!isExactStreamPage()) return;
 
     // Lazy Load Images
@@ -808,6 +880,7 @@
   // Initialize features when DOM is ready
   function onReady() {
     runCustomPFPInitial();
+    runCustomNameInitial();
     initEndlessStream();
   }
   if (document.readyState === 'complete' || document.readyState === 'interactive') {
