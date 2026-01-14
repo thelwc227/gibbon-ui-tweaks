@@ -1,16 +1,17 @@
 // ==UserScript==
 // @name         gibbon-ui-tweaks
 // @namespace    http://tampermonkey.net/
-// @version      2.9
-// @description  Popup with Global, Timetable, Extension categories; Master toggle; link color (live); accent bar color+size (live); paragraph font (incl. Comic Sans MS) applied to tables and nav; Gamer Party Mode; Better Tables; Endless Stream (Lazy Load + Auto Load More) + Return to Top; squared corners; better timetable; keybind selector; popup position (reloads page); update checker; Custom PFP + Custom Name (live, with Steve Cheung easter egg that persists and reverts); Sliding Tabs toggle with drag animation. Fully merged.
+// @version      3.3
+// @description  A script written with Copilot AI to customize the look of gibbonedu, features are manually tested and refined.
 // @match        https://gibbon.ichk.edu.hk/*
 // @grant        none
+// @license MIT
 // ==/UserScript==
 
 (function () {
   'use strict';
 
-  const CURRENT_VERSION = '2.9';
+  const CURRENT_VERSION = '3.3';
 
   const LS = {
     masterToggle: 'gibbon_masterToggle',
@@ -356,7 +357,7 @@
   betterTablesHint.textContent = 'Styles table headers and zebra-stripes rows.';
   betterTablesGroup.appendChild(betterTablesHint);
 
-  // Custom PFP input
+  // Custom PFP input (conditionally overrides only user's own avatar <a> block)
   const pfpGroup = document.createElement('div');
   pfpGroup.className = 'group';
   const pfpLabel = document.createElement('span');
@@ -444,6 +445,23 @@
   });
   streamGroup.appendChild(returnBtn);
 
+  // Complete/Uncomplete all checkboxes
+  const completeGroup = document.createElement('div');
+  completeGroup.className = 'group';
+  const completeRow = document.createElement('div');
+  completeRow.className = 'row';
+  const completeBtn = document.createElement('button');
+  completeBtn.textContent = 'Complete all';
+  const uncompleteBtn = document.createElement('button');
+  uncompleteBtn.textContent = 'Uncomplete all';
+  completeRow.appendChild(completeBtn);
+  completeRow.appendChild(uncompleteBtn);
+  completeGroup.appendChild(completeRow);
+  const completeHint = document.createElement('div');
+  completeHint.className = 'hint';
+  completeHint.textContent = 'Checks or unchecks all "mark-complete" checkboxes.';
+  completeGroup.appendChild(completeHint);
+
   // Append Global section items
   globalSection.appendChild(globalHeader);
   globalSection.appendChild(linkGroup);
@@ -455,6 +473,7 @@
   globalSection.appendChild(nameGroup);
   globalSection.appendChild(slidingTabsGroup);
   globalSection.appendChild(streamGroup);
+  globalSection.appendChild(completeGroup);
 
   // TIMETABLE SECTION
   const timetableSection = document.createElement('div');
@@ -642,6 +661,22 @@
     const pos = positionSelect.value;
     setLS(LS.menuPosition, pos);
     location.reload();
+  });
+
+  // Complete all
+  completeBtn.addEventListener('click', () => {
+    document.querySelectorAll('input.mark-complete[type="checkbox"]').forEach(cb => {
+      cb.checked = true;
+      cb.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+  });
+
+  // Uncomplete all
+  uncompleteBtn.addEventListener('click', () => {
+    document.querySelectorAll('input.mark-complete[type="checkbox"]').forEach(cb => {
+      cb.checked = false;
+      cb.dispatchEvent(new Event('change', { bubbles: true }));
+    });
   });
 
   // Toggle menu visibility by keybind (GUI available even if master OFF)
