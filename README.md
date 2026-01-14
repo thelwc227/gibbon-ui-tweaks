@@ -1,7 +1,7 @@
 # gibbon-ui-tweaks
 A Tampermonkey script written using Copilot AI to customize the look of certain elements on gibbonedu.
 
-One-CLick install: https://greasyfork.org/en/scripts/562588-gibbon-ui-tweaks/
+GreasyFork One-Click install: https://greasyfork.org/en/scripts/562588-gibbon-ui-tweaks/
 
 Pleae install Tampermonkey before use
 
