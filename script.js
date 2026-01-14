@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         gibbon-ui-tweaks
 // @namespace    http://tampermonkey.net/
-// @version      3.3
+// @version      3.4.1
 // @description  A script written with Copilot AI to customize the look of gibbonedu, features are manually tested and refined.
 // @match        https://gibbon.ichk.edu.hk/*
 // @grant        none
@@ -11,7 +11,7 @@
 (function () {
   'use strict';
 
-  const CURRENT_VERSION = '3.3';
+  const CURRENT_VERSION = '3.4';
 
   const LS = {
     masterToggle: 'gibbon_masterToggle',
@@ -29,7 +29,10 @@
     betterTables: 'gibbon_betterTables',
     customPFP: 'gibbon_customPFP',
     customName: 'gibbon_customName',
-    slidingTabs: 'gibbon_slidingTabs'
+    slidingTabs: 'gibbon_slidingTabs',
+    unloadImages: 'gibbon_unloadImages',
+    autoScroll: 'gibbon_autoScroll',
+    scrollSpeed: 'gibbon_scrollSpeed'
   };
 
   const DEFAULTS = {
@@ -48,7 +51,10 @@
     betterTables: false,
     customPFP: '',
     customName: '',
-    slidingTabs: false
+    slidingTabs: false,
+    unloadImages: false,
+    autoScroll: false,
+    scrollSpeed: 5
   };
 
   function setLS(key, value) { localStorage.setItem(key, value); }
@@ -99,12 +105,19 @@
     #controlMenu .group { display: flex; flex-direction: column; gap: 6px; }
     #controlMenu .row { display: flex; gap: 8px; align-items: center; }
     #controlMenu label, #controlMenu span { font-weight: 600; color: #333; }
-    #controlMenu input[type="color"], #controlMenu select, #controlMenu button, #controlMenu input[type="text"] {
+    #controlMenu input[type="color"], #controlMenu select, #controlMenu button, #controlMenu input[type="text"], #controlMenu input[type="range"] {
       height: 30px; border: 1px solid #ccc; border-radius: 8px; background: #fff; padding: 4px 8px; font-size: 13px;
     }
+    #controlMenu input[type="range"] { width: 120px; }
     #controlMenu button { cursor: pointer; background: #f7f7f7; font-weight: 700; }
     #controlMenu .hint { font-size: 11px; color: #777; }
     #updateBtn { margin-top: 8px; }
+    .img-placeholder-btn {
+      display: inline-flex; align-items: center; justify-content: center;
+      background: #fafafa; border: 1px dashed #bbb; color: #333; font-weight: 700;
+      border-radius: 8px; cursor: pointer;
+      padding: 6px 10px;
+    }
   `);
 
   // Apply site styles (reads fresh values each time for live updates)
@@ -211,7 +224,7 @@
       `;
     }
 
-    // Better Tables (global) — typography/spacing only, so Gamer Party headers win when ON.
+    // Better Tables (global)
     if (betterTables) {
       css += `
         th {
@@ -357,7 +370,7 @@
   betterTablesHint.textContent = 'Styles table headers and zebra-stripes rows.';
   betterTablesGroup.appendChild(betterTablesHint);
 
-  // Custom PFP input (conditionally overrides only user's own avatar <a> block)
+  // Custom PFP input
   const pfpGroup = document.createElement('div');
   pfpGroup.className = 'group';
   const pfpLabel = document.createElement('span');
@@ -379,7 +392,7 @@
   pfpGroup.appendChild(pfpRow);
   pfpGroup.appendChild(pfpHint);
 
-  // Custom Name input (live update + easter egg)
+  // Custom Name input
   const nameGroup = document.createElement('div');
   nameGroup.className = 'group';
   const nameLabel = document.createElement('span');
@@ -419,32 +432,6 @@
   slidingTabsHint.textContent = 'Drag left/right across tab buttons with animation.';
   slidingTabsGroup.appendChild(slidingTabsHint);
 
-  // Endless Stream toggle + Return to Top button
-  const streamGroup = document.createElement('label');
-  streamGroup.className = 'group';
-  const streamRow = document.createElement('div');
-  streamRow.className = 'row';
-  const streamText = document.createElement('span');
-  streamText.textContent = 'Endless Stream';
-  const streamToggle = document.createElement('input');
-  streamToggle.type = 'checkbox';
-  streamToggle.checked = getLS(LS.streamEnhance, DEFAULTS.streamEnhance.toString()) === 'true';
-  streamRow.appendChild(streamText);
-  streamRow.appendChild(streamToggle);
-  streamGroup.appendChild(streamRow);
-
-  const streamHint = document.createElement('div');
-  streamHint.className = 'hint';
-  streamHint.textContent = 'Stream page only. Lazy loads images + auto-clicks Load More.';
-  streamGroup.appendChild(streamHint);
-
-  const returnBtn = document.createElement('button');
-  returnBtn.textContent = 'Return to Top';
-  returnBtn.addEventListener('click', () => {
-    window.location.href = 'https://gibbon.ichk.edu.hk/index.php?q=%2Fmodules%2FStream%2Fstream.php#top';
-  });
-  streamGroup.appendChild(returnBtn);
-
   // Complete/Uncomplete all checkboxes
   const completeGroup = document.createElement('div');
   completeGroup.className = 'group';
@@ -472,7 +459,6 @@
   globalSection.appendChild(pfpGroup);
   globalSection.appendChild(nameGroup);
   globalSection.appendChild(slidingTabsGroup);
-  globalSection.appendChild(streamGroup);
   globalSection.appendChild(completeGroup);
 
   // TIMETABLE SECTION
@@ -504,6 +490,99 @@
   timetableSection.appendChild(timetableHeader);
   timetableSection.appendChild(squareGroup);
   timetableSection.appendChild(betterGroup);
+
+  // STREAM ENHANCEMENTS SECTION (new, between Timetable and Extension)
+  const streamEnhSection = document.createElement('div');
+  streamEnhSection.className = 'section';
+  const streamEnhHeader = document.createElement('h4');
+  streamEnhHeader.textContent = 'Stream enhancements';
+
+  // Endless Stream toggle + Return to Top button
+  const streamGroup = document.createElement('label');
+  streamGroup.className = 'group';
+  const streamRow = document.createElement('div');
+  streamRow.className = 'row';
+  const streamText = document.createElement('span');
+  streamText.textContent = 'Endless Stream';
+  const streamToggle = document.createElement('input');
+  streamToggle.type = 'checkbox';
+  streamToggle.checked = getLS(LS.streamEnhance, DEFAULTS.streamEnhance.toString()) === 'true';
+  streamRow.appendChild(streamText);
+  streamRow.appendChild(streamToggle);
+  streamGroup.appendChild(streamRow);
+
+  const streamHint = document.createElement('div');
+  streamHint.className = 'hint';
+  streamHint.textContent = 'Stream page only. Lazy loads images + auto-clicks Load More.';
+  streamGroup.appendChild(streamHint);
+
+  const returnBtn = document.createElement('button');
+  returnBtn.textContent = 'Return to Top';
+  returnBtn.addEventListener('click', () => {
+    window.location.href = 'https://gibbon.ichk.edu.hk/index.php?q=%2Fmodules%2FStream%2Fstream.php#top';
+  });
+  streamGroup.appendChild(returnBtn);
+
+  // Unload All Images toggle
+  const unloadGroup = document.createElement('label');
+  unloadGroup.className = 'group';
+  const unloadRow = document.createElement('div');
+  unloadRow.className = 'row';
+  const unloadText = document.createElement('span');
+  unloadText.textContent = 'Unload all images';
+  const unloadToggle = document.createElement('input');
+  unloadToggle.type = 'checkbox';
+  unloadToggle.checked = getLS(LS.unloadImages, DEFAULTS.unloadImages.toString()) === 'true';
+  unloadRow.appendChild(unloadText);
+  unloadRow.appendChild(unloadToggle);
+  unloadGroup.appendChild(unloadRow);
+  const unloadHint = document.createElement('div');
+  unloadHint.className = 'hint';
+  unloadHint.textContent = 'Replaces images with a button. Click to load the image in-place.';
+  unloadGroup.appendChild(unloadHint);
+
+  // Auto Scroll toggle + speed slider
+  const scrollGroup = document.createElement('div');
+  scrollGroup.className = 'group';
+  const scrollRowTop = document.createElement('div');
+  scrollRowTop.className = 'row';
+  const scrollText = document.createElement('span');
+  scrollText.textContent = 'Auto scroll';
+  const scrollToggle = document.createElement('input');
+  scrollToggle.type = 'checkbox';
+  scrollToggle.checked = getLS(LS.autoScroll, DEFAULTS.autoScroll.toString()) === 'true';
+  scrollRowTop.appendChild(scrollText);
+  scrollRowTop.appendChild(scrollToggle);
+
+  const scrollRowBottom = document.createElement('div');
+  scrollRowBottom.className = 'row';
+  const speedLabel = document.createElement('span');
+  speedLabel.textContent = 'Speed';
+  const speedSlider = document.createElement('input');
+  speedSlider.type = 'range';
+  speedSlider.min = '1';
+  speedSlider.max = '10';
+  speedSlider.step = '1';
+  speedSlider.value = getLS(LS.scrollSpeed, DEFAULTS.scrollSpeed).toString();
+  const speedValue = document.createElement('span');
+  speedValue.textContent = speedSlider.value;
+  scrollRowBottom.appendChild(speedLabel);
+  scrollRowBottom.appendChild(speedSlider);
+  scrollRowBottom.appendChild(speedValue);
+
+  const scrollHint = document.createElement('div');
+  scrollHint.className = 'hint';
+  scrollHint.textContent = 'Scrolls the page automatically. Speed 1–10 (higher = faster).';
+
+  scrollGroup.appendChild(scrollRowTop);
+  scrollGroup.appendChild(scrollRowBottom);
+  scrollGroup.appendChild(scrollHint);
+
+  // Append Stream Enhancements section
+  streamEnhSection.appendChild(streamEnhHeader);
+  streamEnhSection.appendChild(streamGroup);
+  streamEnhSection.appendChild(unloadGroup);
+  streamEnhSection.appendChild(scrollGroup);
 
   // EXTENSION SECTION
   const extensionSection = document.createElement('div');
@@ -566,6 +645,7 @@
   menu.appendChild(masterGroup);
   menu.appendChild(globalSection);
   menu.appendChild(timetableSection);
+  menu.appendChild(streamEnhSection); // new section inserted here
   menu.appendChild(extensionSection);
   document.body.appendChild(menu);
 
@@ -593,7 +673,7 @@
   accentPicker.addEventListener('input', updateAccent);
   accentSize.addEventListener('change', updateAccent);
 
-  // Paragraph font apply: persist and reload (ensures full coverage)
+  // Paragraph font apply: persist and reload
   fontApply.addEventListener('click', () => {
     setLS(LS.paragraphFont, fontSelect.value);
     location.reload();
@@ -635,6 +715,25 @@
   streamToggle.addEventListener('change', () => {
     setLS(LS.streamEnhance, streamToggle.checked);
     location.reload();
+  });
+
+  // Unload Images toggle
+  unloadToggle.addEventListener('change', () => {
+    setLS(LS.unloadImages, unloadToggle.checked);
+    location.reload();
+  });
+
+  // Auto Scroll toggle
+  scrollToggle.addEventListener('change', () => {
+    setLS(LS.autoScroll, scrollToggle.checked);
+    applyAutoScroll(); // start/stop immediately
+  });
+
+  // Speed slider
+  speedSlider.addEventListener('input', () => {
+    setLS(LS.scrollSpeed, speedSlider.value);
+    speedValue.textContent = speedSlider.value;
+    applyAutoScroll(); // adjust speed live
   });
 
   // Squared corners
@@ -735,7 +834,6 @@
   let originalPFP = null;
 
   function detectOriginalPFP(scope = document) {
-    // Find any <a> with a nested <img.w-full.-mt-1> (user's avatar block in header/sidebar)
     const userAnchorImg = scope.querySelector('a[href*="gibbonPersonID="] img.w-full.-mt-1');
     if (userAnchorImg) originalPFP = userAnchorImg.src;
   }
@@ -745,7 +843,6 @@
     const url = (getLS(LS.customPFP, DEFAULTS.customPFP) || '').trim();
     if (!url || !originalPFP) return;
 
-    // Only override <a> blocks whose nested <img.w-full.-mt-1> src matches originalPFP
     const targetImgs = scope.querySelectorAll('a[href*="gibbonPersonID="] img.w-full.-mt-1');
     targetImgs.forEach(img => {
       if (img.src === originalPFP) {
@@ -753,7 +850,6 @@
       }
     });
 
-    // Also check card-style blocks that might mirror the same src (optional safeguard)
     const cardImgs = scope.querySelectorAll('img.inline-block.shadow.bg-white.border.border-gray-600.w-20.lg\\:w-24.p-1');
     cardImgs.forEach(img => {
       if (!img.dataset.originalSrc) img.dataset.originalSrc = img.src;
@@ -786,7 +882,6 @@
     if (getLS(LS.masterToggle, DEFAULTS.masterToggle.toString()) === 'false') return;
     const newName = (getLS(LS.customName, DEFAULTS.customName) || '').trim();
 
-    // Replace displayed name in header/sidebar
     const nameAnchor = scope.querySelector(
       'div.flex-grow.flex.items-center.justify-end.text-right.text-sm.text-purple-200 a.hidden.sm\\:block.text-purple-200'
     );
@@ -794,7 +889,6 @@
       nameAnchor.textContent = newName;
     }
 
-    // Easter Egg: Steve Cheung persistence/revert
     if (newName === 'Steve Cheung') {
       applySteveCheungEasterEgg(scope);
     } else {
@@ -815,7 +909,6 @@
     mutations.forEach(mutation => {
       mutation.addedNodes.forEach(node => {
         if (!(node instanceof Element)) return;
-        // If a new anchor/avatar appears, re-detect and conditionally replace
         const newUserImg = node.querySelector && node.querySelector('a[href*="gibbonPersonID="] img.w-full.-mt-1');
         if (newUserImg && !originalPFP) {
           originalPFP = newUserImg.src;
@@ -835,6 +928,107 @@
     });
   });
   nameObserver.observe(document.body, { childList: true, subtree: true });
+
+  // --- Unload All Images (global) ---
+function unloadAllImages(scope = document) {
+  const imgs = scope.querySelectorAll('img');
+  imgs.forEach(img => {
+    if (img.dataset.unloadedPlaceholder) return;
+
+    const originalSrc = img.getAttribute('src') || img.dataset.src || '';
+    if (!originalSrc) return;
+
+    img.dataset.originalSrc = originalSrc;
+    img.removeAttribute('src');
+
+    const btn = document.createElement('button');
+    btn.className = 'img-placeholder-btn';
+    btn.textContent = 'Load image';
+    img.style.display = 'none';
+    img.dataset.unloadedPlaceholder = 'true';
+
+    const parent = img.parentNode;
+    if (!parent) return;
+    parent.insertBefore(btn, img);
+
+    btn.addEventListener('click', () => {
+      // Create overlay
+      const overlay = document.createElement('div');
+      overlay.style.position = 'fixed';
+      overlay.style.top = '0';
+      overlay.style.left = '0';
+      overlay.style.width = '100%';
+      overlay.style.height = '100%';
+      overlay.style.background = 'rgba(0,0,0,0.8)';
+      overlay.style.display = 'flex';
+      overlay.style.alignItems = 'center';
+      overlay.style.justifyContent = 'center';
+      overlay.style.zIndex = '99999';
+
+      const newImg = document.createElement('img');
+      newImg.src = originalSrc;
+      newImg.style.maxWidth = '90%';
+      newImg.style.maxHeight = '90%';
+      newImg.style.boxShadow = '0 0 20px #000';
+
+      overlay.appendChild(newImg);
+      document.body.appendChild(overlay);
+
+      // Close overlay on click
+      overlay.addEventListener('click', () => overlay.remove());
+    });
+  });
+}
+
+
+  function maybeApplyUnloadImages() {
+    if (getLS(LS.unloadImages, DEFAULTS.unloadImages.toString()) === 'true') {
+      unloadAllImages(document);
+    }
+  }
+
+  const unloadObserver = new MutationObserver(mutations => {
+    if (getLS(LS.unloadImages, DEFAULTS.unloadImages.toString()) !== 'true') return;
+    mutations.forEach(mutation => {
+      mutation.addedNodes.forEach(node => {
+        if (!(node instanceof Element)) return;
+        if (node.tagName === 'IMG') {
+          unloadAllImages(node.parentNode || document);
+        } else {
+          const imgs = node.querySelectorAll && node.querySelectorAll('img');
+          if (imgs && imgs.length) unloadAllImages(node);
+        }
+      });
+    });
+  });
+  unloadObserver.observe(document.body, { childList: true, subtree: true });
+
+  // --- Auto Scroll (global) ---
+  let autoScrollTimer = null;
+function applyAutoScroll() {
+  const enabled = getLS(LS.autoScroll, DEFAULTS.autoScroll.toString()) === 'true';
+  const speed = parseInt(getLS(LS.scrollSpeed, DEFAULTS.scrollSpeed), 10) || DEFAULTS.scrollSpeed;
+
+  if (autoScrollTimer) {
+    clearInterval(autoScrollTimer);
+    autoScrollTimer = null;
+  }
+  if (!enabled) return;
+
+  // Map speed 1–10 to much faster values
+  const intervalMs = 50; // fixed fast tick
+  const stepPx = speed * 20; // 20px per speed unit
+
+  autoScrollTimer = setInterval(() => {
+    window.scrollBy(0, stepPx);
+    const atBottom = (window.innerHeight + window.scrollY) >= document.body.scrollHeight - 2;
+    if (atBottom) {
+      clearInterval(autoScrollTimer);
+      autoScrollTimer = null;
+    }
+  }, intervalMs);
+}
+
 
   // --- Endless Stream (Lazy Load + Auto Load More) ---
   function isExactStreamPage() {
@@ -878,7 +1072,6 @@
       return observer;
     }
 
-    // Ensure Custom PFP runs before lazy prep (if avatars appear within Stream)
     replaceCustomPFP(document);
 
     prepareImages();
@@ -889,7 +1082,6 @@
         mutation.addedNodes.forEach(node => {
           if (!(node instanceof Element)) return;
 
-          // Apply Custom PFP to any new avatars within Stream content
           replaceCustomPFP(node);
 
           if (node.tagName === 'IMG') {
@@ -973,7 +1165,6 @@
   function initSlidingTabs() {
     if (getLS(LS.slidingTabs, DEFAULTS.slidingTabs.toString()) !== 'true') return;
 
-    // Inject CSS for tab animation
     const style = document.createElement('style');
     style.textContent = `
       .tab-active-anim {
@@ -1013,7 +1204,7 @@
     function onMouseMove(e) {
       if (startX !== null && activeButton !== null) {
         const deltaX = e.clientX - startX;
-        const threshold = 80; // balanced drag length
+        const threshold = 80;
         const buttons = Array.from(getTabButtons());
 
         if (deltaX > threshold && currentIndex < buttons.length - 1) {
@@ -1056,6 +1247,8 @@
     applyAllStyles();
     runCustomPFPInitial();
     runCustomNameInitial();
+    maybeApplyUnloadImages();
+    applyAutoScroll();
     initEndlessStream();
     initSlidingTabs();
   }
