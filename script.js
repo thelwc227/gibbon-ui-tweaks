@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         gibbon-ui-tweaks
 // @namespace    http://tampermonkey.net/
-// @version      2.5
-// @description  Popup with Global, Timetable, Extension categories; Master toggle; link color; accent bar color+size; paragraph font (incl. Comic Sans MS); Gamer Party Mode; Better Tables; Endless Stream (Lazy Load + Auto Load More) + Return to Top; squared corners; better timetable; keybind selector; popup position (reloads page); update checker; Custom PFP (only override user's own avatar <a> block when img src matches) + Custom Name (live update). Fully merged.
+// @version      2.9
+// @description  Popup with Global, Timetable, Extension categories; Master toggle; link color (live); accent bar color+size (live); paragraph font (incl. Comic Sans MS) applied to tables and nav; Gamer Party Mode; Better Tables; Endless Stream (Lazy Load + Auto Load More) + Return to Top; squared corners; better timetable; keybind selector; popup position (reloads page); update checker; Custom PFP + Custom Name (live, with Steve Cheung easter egg that persists and reverts); Sliding Tabs toggle with drag animation. Fully merged.
 // @match        https://gibbon.ichk.edu.hk/*
 // @grant        none
 // ==/UserScript==
@@ -10,7 +10,7 @@
 (function () {
   'use strict';
 
-  const CURRENT_VERSION = '2.5';
+  const CURRENT_VERSION = '2.9';
 
   const LS = {
     masterToggle: 'gibbon_masterToggle',
@@ -27,7 +27,8 @@
     streamEnhance: 'gibbon_streamEnhance',
     betterTables: 'gibbon_betterTables',
     customPFP: 'gibbon_customPFP',
-    customName: 'gibbon_customName'
+    customName: 'gibbon_customName',
+    slidingTabs: 'gibbon_slidingTabs'
   };
 
   const DEFAULTS = {
@@ -45,28 +46,15 @@
     streamEnhance: false,
     betterTables: false,
     customPFP: '',
-    customName: ''
-  };
-
-  const persisted = {
-    masterToggle: localStorage.getItem(LS.masterToggle) !== 'false',
-    linkColor: localStorage.getItem(LS.linkColor) || DEFAULTS.linkColor,
-    barAccent: localStorage.getItem(LS.barAccent) || DEFAULTS.barAccent,
-    barFontSize: localStorage.getItem(LS.barFontSize) || DEFAULTS.barFontSize,
-    paragraphFont: localStorage.getItem(LS.paragraphFont) || DEFAULTS.paragraphFont,
-    squareToggle: localStorage.getItem(LS.squareToggle) === 'true' || DEFAULTS.squareToggle,
-    betterToggle: localStorage.getItem(LS.betterToggle) === 'true' || DEFAULTS.betterToggle,
-    gamerParty: localStorage.getItem(LS.gamerParty) === 'true' || DEFAULTS.gamerParty,
-    keybind: (localStorage.getItem(LS.keybind) || DEFAULTS.keybind).toLowerCase(),
-    menuVisible: localStorage.getItem(LS.menuVisible) ?? DEFAULTS.menuVisible,
-    menuPosition: localStorage.getItem(LS.menuPosition) || DEFAULTS.menuPosition,
-    streamEnhance: localStorage.getItem(LS.streamEnhance) === 'true' || DEFAULTS.streamEnhance,
-    betterTables: localStorage.getItem(LS.betterTables) === 'true' || DEFAULTS.betterTables,
-    customPFP: localStorage.getItem(LS.customPFP) || DEFAULTS.customPFP,
-    customName: localStorage.getItem(LS.customName) || DEFAULTS.customName
+    customName: '',
+    slidingTabs: false
   };
 
   function setLS(key, value) { localStorage.setItem(key, value); }
+  function getLS(key, fallback) {
+    const v = localStorage.getItem(key);
+    return v === null ? fallback : v;
+  }
   function upsertStyle(id, cssText) {
     let node = document.getElementById(id);
     if (!node) {
@@ -85,12 +73,12 @@
     #controlMenu {
       position: fixed;
       top: 12px;
-      ${persisted.menuPosition === 'top-left' ? 'left: 12px;' : 'right: 12px;'}
+      ${getLS(LS.menuPosition, DEFAULTS.menuPosition) === 'top-left' ? 'left: 12px;' : 'right: 12px;'}
       width: 280px;
       max-height: 80vh;
       overflow-y: auto;
       background: rgba(255,255,255,0.96);
-      border: 2px solid ${persisted.barAccent};
+      border: 2px solid ${getLS(LS.barAccent, DEFAULTS.barAccent)};
       padding: 12px;
       border-radius: 12px;
       box-shadow: 0 10px 22px rgba(0,0,0,0.18);
@@ -121,18 +109,19 @@
   // Apply site styles (reads fresh values each time for live updates)
   function applyAllStyles() {
     const s = document.getElementById('customStyles'); if (s) s.remove();
-    if (localStorage.getItem(LS.masterToggle) === 'false') return;
+    if (getLS(LS.masterToggle, DEFAULTS.masterToggle.toString()) === 'false') return;
 
-    const linkColor = localStorage.getItem(LS.linkColor) || DEFAULTS.linkColor;
-    const barAccent = localStorage.getItem(LS.barAccent) || DEFAULTS.barAccent;
-    const barFontSize = localStorage.getItem(LS.barFontSize) || DEFAULTS.barFontSize;
-    const paragraphFont = localStorage.getItem(LS.paragraphFont) || DEFAULTS.paragraphFont;
-    const squareToggle = localStorage.getItem(LS.squareToggle) === 'true' || DEFAULTS.squareToggle;
-    const betterToggle = localStorage.getItem(LS.betterToggle) === 'true' || DEFAULTS.betterToggle;
-    const gamerParty = localStorage.getItem(LS.gamerParty) === 'true' || DEFAULTS.gamerParty;
-    const betterTables = localStorage.getItem(LS.betterTables) === 'true' || DEFAULTS.betterTables;
+    const linkColor = getLS(LS.linkColor, DEFAULTS.linkColor);
+    const barAccent = getLS(LS.barAccent, DEFAULTS.barAccent);
+    const barFontSize = getLS(LS.barFontSize, DEFAULTS.barFontSize);
+    const paragraphFont = getLS(LS.paragraphFont, DEFAULTS.paragraphFont);
+    const squareToggle = getLS(LS.squareToggle, DEFAULTS.squareToggle.toString()) === 'true';
+    const betterToggle = getLS(LS.betterToggle, DEFAULTS.betterToggle.toString()) === 'true';
+    const gamerParty = getLS(LS.gamerParty, DEFAULTS.gamerParty.toString()) === 'true';
+    const betterTables = getLS(LS.betterTables, DEFAULTS.betterTables.toString()) === 'true';
 
     let css = `
+      /* Global paragraph font */
       p,
       span.block.text-sm.text-gray-700.overflow-x-auto {
         font-family: '${paragraphFont}', sans-serif !important;
@@ -140,7 +129,26 @@
         line-height: 1.2 !important;
       }
 
-      /* Default ON: links only underline on hover (no toggle) */
+      /* Apply paragraph font inside tables and common inline elements */
+      table, thead, tbody, tr, th, td,
+      td *:not(svg):not(path),
+      th *:not(svg):not(path),
+      .text-sm, .text-xs, .text-xxs,
+      .italic, .font-semibold, .font-bold,
+      .px-2, .px-3, .py-2, .py-3,
+      .whitespace-nowrap,
+      .inline-flex.items-center.align-middle.rounded-md {
+        font-family: '${paragraphFont}', sans-serif !important;
+      }
+
+      /* Navigation tab text (top menu and dropdown items) */
+      nav a,
+      li.sm\\:relative.group a.block.uppercase.font-bold.text-sm,
+      ul li a.block.text-sm {
+        font-family: '${paragraphFont}', sans-serif !important;
+      }
+
+      /* Keep link underline behavior */
       main a, .content a, article a, p a {
         text-decoration: none !important;
       }
@@ -206,7 +214,7 @@
     if (betterTables) {
       css += `
         th {
-          font-family: 'Lexend', sans-serif !important;
+          font-family: '${paragraphFont}', sans-serif !important;
           padding: 12px !important;
           letter-spacing: 0.5px !important;
           font-weight: bold !important;
@@ -226,7 +234,7 @@
   // Build popup menu
   const menu = document.createElement('div');
   menu.id = 'controlMenu';
-  menu.style.display = (persisted.menuVisible === 'false') ? 'none' : 'flex';
+  menu.style.display = (getLS(LS.menuVisible, DEFAULTS.menuVisible) === 'false') ? 'none' : 'flex';
 
   // Header
   const header = document.createElement('div');
@@ -236,7 +244,7 @@
   title.textContent = 'Gibbon Controls';
   const meta = document.createElement('div');
   meta.className = 'meta';
-  meta.textContent = `Version ${CURRENT_VERSION} • Toggle: ${persisted.keybind.toUpperCase()} • Position: ${persisted.menuPosition.replace('-', ' ')}`;
+  meta.textContent = `Version ${CURRENT_VERSION} • Toggle: ${(getLS(LS.keybind, DEFAULTS.keybind)).toUpperCase()} • Position: ${getLS(LS.menuPosition, DEFAULTS.menuPosition).replace('-', ' ')}`;
   header.appendChild(title);
   header.appendChild(meta);
 
@@ -249,7 +257,7 @@
   masterText.textContent = 'Enable customizations';
   const masterToggleEl = document.createElement('input');
   masterToggleEl.type = 'checkbox';
-  masterToggleEl.checked = persisted.masterToggle;
+  masterToggleEl.checked = getLS(LS.masterToggle, DEFAULTS.masterToggle.toString()) !== 'false';
   masterRow.appendChild(masterText);
   masterRow.appendChild(masterToggleEl);
   masterGroup.appendChild(masterRow);
@@ -267,7 +275,7 @@
   linkLabel.textContent = 'Link color';
   const linkPicker = document.createElement('input');
   linkPicker.type = 'color';
-  linkPicker.value = persisted.linkColor;
+  linkPicker.value = getLS(LS.linkColor, DEFAULTS.linkColor);
   linkGroup.appendChild(linkLabel);
   linkGroup.appendChild(linkPicker);
 
@@ -280,7 +288,7 @@
   accentRow.className = 'row';
   const accentPicker = document.createElement('input');
   accentPicker.type = 'color';
-  accentPicker.value = persisted.barAccent;
+  accentPicker.value = getLS(LS.barAccent, DEFAULTS.barAccent);
   const accentSize = document.createElement('select');
   ['13px','14px','15px','16px','18px','20px'].forEach(size => {
     const opt = document.createElement('option');
@@ -288,7 +296,7 @@
     opt.textContent = size;
     accentSize.appendChild(opt);
   });
-  accentSize.value = persisted.barFontSize;
+  accentSize.value = getLS(LS.barFontSize, DEFAULTS.barFontSize);
   accentRow.appendChild(accentPicker);
   accentRow.appendChild(accentSize);
   accentGroup.appendChild(accentLabel);
@@ -308,7 +316,7 @@
     opt.textContent = f;
     fontSelect.appendChild(opt);
   });
-  fontSelect.value = persisted.paragraphFont;
+  fontSelect.value = getLS(LS.paragraphFont, DEFAULTS.paragraphFont);
   const fontApply = document.createElement('button');
   fontApply.textContent = 'Apply';
   fontRow.appendChild(fontSelect);
@@ -325,7 +333,7 @@
   gamerText.textContent = 'Gamer Party Mode';
   const gamerToggle = document.createElement('input');
   gamerToggle.type = 'checkbox';
-  gamerToggle.checked = persisted.gamerParty;
+  gamerToggle.checked = getLS(LS.gamerParty, DEFAULTS.gamerParty.toString()) === 'true';
   gamerRow.appendChild(gamerText);
   gamerRow.appendChild(gamerToggle);
   gamerGroup.appendChild(gamerRow);
@@ -339,7 +347,7 @@
   betterTablesText.textContent = 'Better Tables';
   const betterTablesToggle = document.createElement('input');
   betterTablesToggle.type = 'checkbox';
-  betterTablesToggle.checked = persisted.betterTables;
+  betterTablesToggle.checked = getLS(LS.betterTables, DEFAULTS.betterTables.toString()) === 'true';
   betterTablesRow.appendChild(betterTablesText);
   betterTablesRow.appendChild(betterTablesToggle);
   betterTablesGroup.appendChild(betterTablesRow);
@@ -348,7 +356,7 @@
   betterTablesHint.textContent = 'Styles table headers and zebra-stripes rows.';
   betterTablesGroup.appendChild(betterTablesHint);
 
-  // Custom PFP input (conditionally overrides only user's own avatar <a> block)
+  // Custom PFP input
   const pfpGroup = document.createElement('div');
   pfpGroup.className = 'group';
   const pfpLabel = document.createElement('span');
@@ -358,7 +366,7 @@
   const pfpInput = document.createElement('input');
   pfpInput.type = 'text';
   pfpInput.placeholder = 'https://example.com/avatar.jpg';
-  pfpInput.value = persisted.customPFP;
+  pfpInput.value = getLS(LS.customPFP, DEFAULTS.customPFP);
   const pfpApply = document.createElement('button');
   pfpApply.textContent = 'Apply';
   const pfpHint = document.createElement('div');
@@ -370,7 +378,7 @@
   pfpGroup.appendChild(pfpRow);
   pfpGroup.appendChild(pfpHint);
 
-  // Custom Name input (live update)
+  // Custom Name input (live update + easter egg)
   const nameGroup = document.createElement('div');
   nameGroup.className = 'group';
   const nameLabel = document.createElement('span');
@@ -380,17 +388,35 @@
   const nameInput = document.createElement('input');
   nameInput.type = 'text';
   nameInput.placeholder = 'Enter replacement name';
-  nameInput.value = persisted.customName;
+  nameInput.value = getLS(LS.customName, DEFAULTS.customName);
   const nameApply = document.createElement('button');
   nameApply.textContent = 'Apply';
   const nameHint = document.createElement('div');
   nameHint.className = 'hint';
-  nameHint.textContent = 'Replaces your displayed name in header/sidebar.';
+  nameHint.textContent = 'Replaces your displayed name in header/sidebar. Enter "Steve Cheung" for a surprise.';
   nameRow.appendChild(nameInput);
   nameRow.appendChild(nameApply);
   nameGroup.appendChild(nameLabel);
   nameGroup.appendChild(nameRow);
   nameGroup.appendChild(nameHint);
+
+  // Sliding Tabs toggle
+  const slidingTabsGroup = document.createElement('label');
+  slidingTabsGroup.className = 'group';
+  const slidingTabsRow = document.createElement('div');
+  slidingTabsRow.className = 'row';
+  const slidingTabsText = document.createElement('span');
+  slidingTabsText.textContent = 'Sliding Tabs';
+  const slidingTabsToggle = document.createElement('input');
+  slidingTabsToggle.type = 'checkbox';
+  slidingTabsToggle.checked = getLS(LS.slidingTabs, DEFAULTS.slidingTabs.toString()) === 'true';
+  slidingTabsRow.appendChild(slidingTabsText);
+  slidingTabsRow.appendChild(slidingTabsToggle);
+  slidingTabsGroup.appendChild(slidingTabsRow);
+  const slidingTabsHint = document.createElement('div');
+  slidingTabsHint.className = 'hint';
+  slidingTabsHint.textContent = 'Drag left/right across tab buttons with animation.';
+  slidingTabsGroup.appendChild(slidingTabsHint);
 
   // Endless Stream toggle + Return to Top button
   const streamGroup = document.createElement('label');
@@ -401,7 +427,7 @@
   streamText.textContent = 'Endless Stream';
   const streamToggle = document.createElement('input');
   streamToggle.type = 'checkbox';
-  streamToggle.checked = persisted.streamEnhance;
+  streamToggle.checked = getLS(LS.streamEnhance, DEFAULTS.streamEnhance.toString()) === 'true';
   streamRow.appendChild(streamText);
   streamRow.appendChild(streamToggle);
   streamGroup.appendChild(streamRow);
@@ -427,6 +453,7 @@
   globalSection.appendChild(betterTablesGroup);
   globalSection.appendChild(pfpGroup);
   globalSection.appendChild(nameGroup);
+  globalSection.appendChild(slidingTabsGroup);
   globalSection.appendChild(streamGroup);
 
   // TIMETABLE SECTION
@@ -441,7 +468,7 @@
   squareText.textContent = 'Squared corners';
   const squareToggle = document.createElement('input');
   squareToggle.type = 'checkbox';
-  squareToggle.checked = persisted.squareToggle;
+  squareToggle.checked = getLS(LS.squareToggle, DEFAULTS.squareToggle.toString()) === 'true';
   squareGroup.appendChild(squareText);
   squareGroup.appendChild(squareToggle);
 
@@ -451,7 +478,7 @@
   betterText.textContent = 'Better timetable';
   const betterToggle = document.createElement('input');
   betterToggle.type = 'checkbox';
-  betterToggle.checked = persisted.betterToggle;
+  betterToggle.checked = getLS(LS.betterToggle, DEFAULTS.betterToggle.toString()) === 'true';
   betterGroup.appendChild(betterText);
   betterGroup.appendChild(betterToggle);
 
@@ -477,7 +504,7 @@
     opt.textContent = k.toUpperCase();
     keybindSelect.appendChild(opt);
   });
-  keybindSelect.value = persisted.keybind;
+  keybindSelect.value = getLS(LS.keybind, DEFAULTS.keybind);
   const keybindHint = document.createElement('div');
   keybindHint.className = 'hint';
   keybindHint.textContent = 'Press the selected key to show/hide the menu.';
@@ -497,7 +524,7 @@
     opt.textContent = p.t;
     positionSelect.appendChild(opt);
   });
-  positionSelect.value = persisted.menuPosition;
+  positionSelect.value = getLS(LS.menuPosition, DEFAULTS.menuPosition);
   const positionHint = document.createElement('div');
   positionHint.className = 'hint';
   positionHint.textContent = 'Changing this reloads the page.';
@@ -534,7 +561,7 @@
   // Link color — live update unless gamer party is ON
   linkPicker.addEventListener('input', () => {
     setLS(LS.linkColor, linkPicker.value);
-    if (masterToggleEl.checked && !gamerToggle.checked) applyAllStyles();
+    if (masterToggleEl.checked && getLS(LS.gamerParty, DEFAULTS.gamerParty.toString()) !== 'true') applyAllStyles();
   });
 
   // Accent bar color + font size — live update unless gamer party is ON
@@ -542,12 +569,12 @@
     setLS(LS.barAccent, accentPicker.value);
     setLS(LS.barFontSize, accentSize.value);
     menu.style.borderColor = accentPicker.value;
-    if (masterToggleEl.checked && !gamerToggle.checked) applyAllStyles();
+    if (masterToggleEl.checked && getLS(LS.gamerParty, DEFAULTS.gamerParty.toString()) !== 'true') applyAllStyles();
   }
   accentPicker.addEventListener('input', updateAccent);
   accentSize.addEventListener('change', updateAccent);
 
-  // Paragraph font apply: persist and auto-refresh
+  // Paragraph font apply: persist and reload (ensures full coverage)
   fontApply.addEventListener('click', () => {
     setLS(LS.paragraphFont, fontSelect.value);
     location.reload();
@@ -565,19 +592,24 @@
     location.reload();
   });
 
-  // Custom PFP apply
+  // Custom PFP apply — live attempt, observer covers late loads
   pfpApply.addEventListener('click', () => {
     const url = pfpInput.value.trim();
     setLS(LS.customPFP, url);
-    // Live update: try immediate replacement; if not found yet, mutation observer will catch later
     replaceCustomPFP(document);
   });
 
-  // Custom Name apply — live update
+  // Custom Name apply — live update + Easter Egg trigger
   nameApply.addEventListener('click', () => {
     const newName = nameInput.value.trim();
     setLS(LS.customName, newName);
     replaceCustomName(document);
+  });
+
+  // Sliding Tabs toggle — reload to attach/detach listeners cleanly
+  slidingTabsToggle.addEventListener('change', () => {
+    setLS(LS.slidingTabs, slidingTabsToggle.checked);
+    location.reload();
   });
 
   // Endless Stream toggle
@@ -617,7 +649,7 @@
     const t = e.target;
     const typing = t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable);
     if (typing) return;
-    const kb = (localStorage.getItem(LS.keybind) || DEFAULTS.keybind).toLowerCase();
+    const kb = (getLS(LS.keybind, DEFAULTS.keybind)).toLowerCase();
     if (e.key && e.key.toLowerCase() === kb) {
       const newDisplay = (menu.style.display === 'none') ? 'flex' : 'none';
       menu.style.display = newDisplay;
@@ -626,7 +658,7 @@
   });
 
   // Persist menu visibility across reloads
-  const visiblePersisted = localStorage.getItem(LS.menuVisible);
+  const visiblePersisted = getLS(LS.menuVisible, DEFAULTS.menuVisible);
   menu.style.display = (visiblePersisted === 'false') ? 'none' : 'flex';
 
   // Update checker
@@ -674,8 +706,8 @@
   }
 
   function replaceCustomPFP(scope = document) {
-    if (localStorage.getItem(LS.masterToggle) === 'false') return;
-    const url = (localStorage.getItem(LS.customPFP) || '').trim();
+    if (getLS(LS.masterToggle, DEFAULTS.masterToggle.toString()) === 'false') return;
+    const url = (getLS(LS.customPFP, DEFAULTS.customPFP) || '').trim();
     if (!url || !originalPFP) return;
 
     // Only override <a> blocks whose nested <img.w-full.-mt-1> src matches originalPFP
@@ -689,24 +721,49 @@
     // Also check card-style blocks that might mirror the same src (optional safeguard)
     const cardImgs = scope.querySelectorAll('img.inline-block.shadow.bg-white.border.border-gray-600.w-20.lg\\:w-24.p-1');
     cardImgs.forEach(img => {
+      if (!img.dataset.originalSrc) img.dataset.originalSrc = img.src;
       if (img.src === originalPFP) {
         img.src = url;
       }
     });
   }
 
-  // --- Custom Name replacement (live) ---
-  function replaceCustomName(scope = document) {
-    if (localStorage.getItem(LS.masterToggle) === 'false') return;
-    const newName = (localStorage.getItem(LS.customName) || '').trim();
-    if (!newName) return;
+  // --- Custom Name replacement (live) + Easter Egg persistence/revert ---
+  function applySteveCheungEasterEgg(scope = document) {
+    const specialUrl = 'https://gibbon.ichk.edu.hk/uploads/2025/04/scheung6.jpg';
+    const imgs = scope.querySelectorAll('img.inline-block.shadow.bg-white.border.border-gray-600.w-20.lg\\:w-24.p-1');
+    imgs.forEach(img => {
+      if (!img.dataset.originalSrc) img.dataset.originalSrc = img.src;
+      img.src = specialUrl;
+    });
+  }
 
-    // Target the anchor that shows the user’s name in the header area
+  function revertSteveCheungEasterEgg(scope = document) {
+    const imgs = scope.querySelectorAll('img.inline-block.shadow.bg-white.border.border-gray-600.w-20.lg\\:w-24.p-1');
+    imgs.forEach(img => {
+      if (img.dataset.originalSrc) {
+        img.src = img.dataset.originalSrc;
+      }
+    });
+  }
+
+  function replaceCustomName(scope = document) {
+    if (getLS(LS.masterToggle, DEFAULTS.masterToggle.toString()) === 'false') return;
+    const newName = (getLS(LS.customName, DEFAULTS.customName) || '').trim();
+
+    // Replace displayed name in header/sidebar
     const nameAnchor = scope.querySelector(
       'div.flex-grow.flex.items-center.justify-end.text-right.text-sm.text-purple-200 a.hidden.sm\\:block.text-purple-200'
     );
-    if (nameAnchor) {
+    if (nameAnchor && newName) {
       nameAnchor.textContent = newName;
+    }
+
+    // Easter Egg: Steve Cheung persistence/revert
+    if (newName === 'Steve Cheung') {
+      applySteveCheungEasterEgg(scope);
+    } else {
+      revertSteveCheungEasterEgg(scope);
     }
   }
 
@@ -752,8 +809,8 @@
   }
 
   function initEndlessStream() {
-    if (localStorage.getItem(LS.masterToggle) === 'false') return;
-    if (localStorage.getItem(LS.streamEnhance) !== 'true') return;
+    if (getLS(LS.masterToggle, DEFAULTS.masterToggle.toString()) === 'false') return;
+    if (getLS(LS.streamEnhance, DEFAULTS.streamEnhance.toString()) !== 'true') return;
     if (!isExactStreamPage()) return;
 
     // Lazy Load Images
@@ -877,11 +934,95 @@
     }, 200);
   }
 
+  // --- Sliding Tabs (Stepwise Drag Tab Hover with Animation) ---
+  function initSlidingTabs() {
+    if (getLS(LS.slidingTabs, DEFAULTS.slidingTabs.toString()) !== 'true') return;
+
+    // Inject CSS for tab animation
+    const style = document.createElement('style');
+    style.textContent = `
+      .tab-active-anim {
+        transition: all 0.3s ease;
+        transform: scale(1.1);
+        opacity: 1;
+      }
+      .tab-inactive-anim {
+        transition: all 0.3s ease;
+        transform: scale(1.0);
+        opacity: 0.6;
+      }
+    `;
+    document.head.appendChild(style);
+
+    function getTabButtons() {
+      return document.querySelectorAll('span.block.sm\\:inline.text-xxs.sm\\:text-sm.whitespace-nowrap');
+    }
+
+    let startX = null;
+    let activeButton = null;
+    let currentIndex = null;
+
+    function onMouseDown(e) {
+      const buttons = Array.from(getTabButtons());
+      buttons.forEach(btn => {
+        if (btn.contains(e.target)) {
+          startX = e.clientX;
+          activeButton = btn;
+          currentIndex = buttons.indexOf(btn);
+          buttons.forEach(b => b.classList.remove('tab-active-anim','tab-inactive-anim'));
+          btn.classList.add('tab-active-anim');
+        }
+      });
+    }
+
+    function onMouseMove(e) {
+      if (startX !== null && activeButton !== null) {
+        const deltaX = e.clientX - startX;
+        const threshold = 80; // balanced drag length
+        const buttons = Array.from(getTabButtons());
+
+        if (deltaX > threshold && currentIndex < buttons.length - 1) {
+          currentIndex += 1;
+          buttons.forEach(b => b.classList.remove('tab-active-anim','tab-inactive-anim'));
+          buttons.forEach((b,i) => {
+            if (i === currentIndex) b.classList.add('tab-active-anim');
+            else b.classList.add('tab-inactive-anim');
+          });
+          buttons[currentIndex].click();
+          startX = e.clientX;
+        }
+
+        if (deltaX < -threshold && currentIndex > 0) {
+          currentIndex -= 1;
+          buttons.forEach(b => b.classList.remove('tab-active-anim','tab-inactive-anim'));
+          buttons.forEach((b,i) => {
+            if (i === currentIndex) b.classList.add('tab-active-anim');
+            else b.classList.add('tab-inactive-anim');
+          });
+          buttons[currentIndex].click();
+          startX = e.clientX;
+        }
+      }
+    }
+
+    function onMouseUp() {
+      startX = null;
+      activeButton = null;
+      currentIndex = null;
+    }
+
+    document.addEventListener('mousedown', onMouseDown);
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+  }
+
   // Initialize features when DOM is ready
   function onReady() {
+    applyAllStyles();
     runCustomPFPInitial();
     runCustomNameInitial();
     initEndlessStream();
+    initSlidingTabs();
   }
   if (document.readyState === 'complete' || document.readyState === 'interactive') {
     onReady();
