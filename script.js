@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         gibbon-ui-tweaks
 // @namespace    http://tampermonkey.net/
-// @version      3.4.1
+// @version      3.4.673
 // @description  A script written with Copilot AI to customize the look of gibbonedu, features are manually tested and refined.
 // @match        https://gibbon.ichk.edu.hk/*
 // @grant        none
@@ -11,7 +11,7 @@
 (function () {
   'use strict';
 
-  const CURRENT_VERSION = '3.4';
+  const CURRENT_VERSION = '3.4.673';
 
   const LS = {
     masterToggle: 'gibbon_masterToggle',
@@ -120,7 +120,7 @@
     }
   `);
 
-  // Apply site styles (reads fresh values each time for live updates)
+  // Apply site styles
   function applyAllStyles() {
     const s = document.getElementById('customStyles'); if (s) s.remove();
     if (getLS(LS.masterToggle, DEFAULTS.masterToggle.toString()) === 'false') return;
@@ -135,15 +135,12 @@
     const betterTables = getLS(LS.betterTables, DEFAULTS.betterTables.toString()) === 'true';
 
     let css = `
-      /* Global paragraph font */
       p,
       span.block.text-sm.text-gray-700.overflow-x-auto {
         font-family: '${paragraphFont}', sans-serif !important;
         font-size: 17px !important;
         line-height: 1.2 !important;
       }
-
-      /* Apply paragraph font inside tables and common inline elements */
       table, thead, tbody, tr, th, td,
       td *:not(svg):not(path),
       th *:not(svg):not(path),
@@ -154,21 +151,13 @@
       .inline-flex.items-center.align-middle.rounded-md {
         font-family: '${paragraphFont}', sans-serif !important;
       }
-
-      /* Navigation tab text (top menu and dropdown items) */
       nav a,
       li.sm\\:relative.group a.block.uppercase.font-bold.text-sm,
       ul li a.block.text-sm {
         font-family: '${paragraphFont}', sans-serif !important;
       }
-
-      /* Keep link underline behavior */
-      main a, .content a, article a, p a {
-        text-decoration: none !important;
-      }
-      main a:hover, .content a:hover, article a:hover, p a:hover {
-        text-decoration: underline !important;
-      }
+      main a, .content a, article a, p a { text-decoration: none !important; }
+      main a:hover, .content a:hover, article a:hover, p a:hover { text-decoration: underline !important; }
     `;
 
     if (gamerParty) {
@@ -198,9 +187,7 @@
       `;
     }
 
-    if (squareToggle) {
-      css += `.ttItem { border-radius: 0 !important; }`;
-    }
+    if (squareToggle) css += `.ttItem { border-radius: 0 !important; }`;
     if (betterToggle) {
       css += `
         .ttItem {
@@ -223,8 +210,6 @@
         }
       `;
     }
-
-    // Better Tables (global)
     if (betterTables) {
       css += `
         th {
@@ -235,9 +220,7 @@
           text-transform: uppercase !important;
           border-bottom: 3px solid #555 !important;
         }
-        tr:nth-child(even) {
-          background-color: #f5f5f5 !important;
-        }
+        tr:nth-child(even) { background-color: #f5f5f5 !important; }
       `;
     }
 
@@ -491,7 +474,7 @@
   timetableSection.appendChild(squareGroup);
   timetableSection.appendChild(betterGroup);
 
-  // STREAM ENHANCEMENTS SECTION (new, between Timetable and Extension)
+  // STREAM ENHANCEMENTS SECTION
   const streamEnhSection = document.createElement('div');
   streamEnhSection.className = 'section';
   const streamEnhHeader = document.createElement('h4');
@@ -538,7 +521,7 @@
   unloadGroup.appendChild(unloadRow);
   const unloadHint = document.createElement('div');
   unloadHint.className = 'hint';
-  unloadHint.textContent = 'Replaces images with a button. Click to load the image in-place.';
+  unloadHint.textContent = 'Replaces images with a button. Click to load the image in-place. Unloads images you scroll past.';
   unloadGroup.appendChild(unloadHint);
 
   // Auto Scroll toggle + speed slider
@@ -645,25 +628,21 @@
   menu.appendChild(masterGroup);
   menu.appendChild(globalSection);
   menu.appendChild(timetableSection);
-  menu.appendChild(streamEnhSection); // new section inserted here
+  menu.appendChild(streamEnhSection);
   menu.appendChild(extensionSection);
   document.body.appendChild(menu);
 
   // Event handlers
-
-  // Master toggle: persist and reload
   masterToggleEl.addEventListener('change', () => {
     setLS(LS.masterToggle, masterToggleEl.checked);
     location.reload();
   });
 
-  // Link color — live update unless gamer party is ON
   linkPicker.addEventListener('input', () => {
     setLS(LS.linkColor, linkPicker.value);
     if (masterToggleEl.checked && getLS(LS.gamerParty, DEFAULTS.gamerParty.toString()) !== 'true') applyAllStyles();
   });
 
-  // Accent bar color + font size — live update unless gamer party is ON
   function updateAccent() {
     setLS(LS.barAccent, accentPicker.value);
     setLS(LS.barFontSize, accentSize.value);
@@ -673,130 +652,22 @@
   accentPicker.addEventListener('input', updateAccent);
   accentSize.addEventListener('change', updateAccent);
 
-  // Paragraph font apply: persist and reload
   fontApply.addEventListener('click', () => {
     setLS(LS.paragraphFont, fontSelect.value);
     location.reload();
   });
 
-  // Gamer Party Mode: persist and reload
   gamerToggle.addEventListener('change', () => {
     setLS(LS.gamerParty, gamerToggle.checked);
     location.reload();
   });
 
-  // Better Tables toggle
   betterTablesToggle.addEventListener('change', () => {
     setLS(LS.betterTables, betterTablesToggle.checked);
     location.reload();
   });
 
-  // Custom PFP apply — live attempt, observer covers late loads
-  pfpApply.addEventListener('click', () => {
-    const url = pfpInput.value.trim();
-    setLS(LS.customPFP, url);
-    replaceCustomPFP(document);
-  });
-
-  // Custom Name apply — live update + Easter Egg trigger
-  nameApply.addEventListener('click', () => {
-    const newName = nameInput.value.trim();
-    setLS(LS.customName, newName);
-    replaceCustomName(document);
-  });
-
-  // Sliding Tabs toggle — reload to attach/detach listeners cleanly
-  slidingTabsToggle.addEventListener('change', () => {
-    setLS(LS.slidingTabs, slidingTabsToggle.checked);
-    location.reload();
-  });
-
-  // Endless Stream toggle
-  streamToggle.addEventListener('change', () => {
-    setLS(LS.streamEnhance, streamToggle.checked);
-    location.reload();
-  });
-
-  // Unload Images toggle
-  unloadToggle.addEventListener('change', () => {
-    setLS(LS.unloadImages, unloadToggle.checked);
-    location.reload();
-  });
-
-  // Auto Scroll toggle
-  scrollToggle.addEventListener('change', () => {
-    setLS(LS.autoScroll, scrollToggle.checked);
-    applyAutoScroll(); // start/stop immediately
-  });
-
-  // Speed slider
-  speedSlider.addEventListener('input', () => {
-    setLS(LS.scrollSpeed, speedSlider.value);
-    speedValue.textContent = speedSlider.value;
-    applyAutoScroll(); // adjust speed live
-  });
-
-  // Squared corners
-  squareToggle.addEventListener('change', () => {
-    setLS(LS.squareToggle, squareToggle.checked);
-    location.reload();
-  });
-
-  // Better timetable
-  betterToggle.addEventListener('change', () => {
-    setLS(LS.betterToggle, betterToggle.checked);
-    location.reload();
-  });
-
-  // Keybind selector
-  keybindSelect.addEventListener('change', () => {
-    const kb = keybindSelect.value.toLowerCase();
-    setLS(LS.keybind, kb);
-    meta.textContent = `Version ${CURRENT_VERSION} • Toggle: ${kb.toUpperCase()} • Position: ${positionSelect.value.replace('-', ' ')}`;
-  });
-
-  // Position selector: persist and reload
-  positionSelect.addEventListener('change', () => {
-    const pos = positionSelect.value;
-    setLS(LS.menuPosition, pos);
-    location.reload();
-  });
-
-  // Complete all
-  completeBtn.addEventListener('click', () => {
-    document.querySelectorAll('input.mark-complete[type="checkbox"]').forEach(cb => {
-      cb.checked = true;
-      cb.dispatchEvent(new Event('change', { bubbles: true }));
-    });
-  });
-
-  // Uncomplete all
-  uncompleteBtn.addEventListener('click', () => {
-    document.querySelectorAll('input.mark-complete[type="checkbox"]').forEach(cb => {
-      cb.checked = false;
-      cb.dispatchEvent(new Event('change', { bubbles: true }));
-    });
-  });
-
-  // Toggle menu visibility by keybind (GUI available even if master OFF)
-  document.addEventListener('keydown', (e) => {
-    const t = e.target;
-    const typing = t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable);
-    if (typing) return;
-    const kb = (getLS(LS.keybind, DEFAULTS.keybind)).toLowerCase();
-    if (e.key && e.key.toLowerCase() === kb) {
-      const newDisplay = (menu.style.display === 'none') ? 'flex' : 'none';
-      menu.style.display = newDisplay;
-      setLS(LS.menuVisible, newDisplay === 'flex' ? 'true' : 'false');
-    }
-  });
-
-  // Persist menu visibility across reloads
-  const visiblePersisted = getLS(LS.menuVisible, DEFAULTS.menuVisible);
-  menu.style.display = (visiblePersisted === 'false') ? 'none' : 'flex';
-
-  // Update checker
-  async function checkForUpdates() {
+  const updateBtnHandler = async () => {
     try {
       const resp = await fetch('https://raw.githubusercontent.com/thelwc227/gibbon-ui-tweaks/main/script.js', { cache: 'no-store' });
       if (!resp.ok) { alert('Unable to check updates (network error).'); return; }
@@ -804,7 +675,6 @@
       const match = text.match(/@version\s+([0-9.]+)/);
       if (!match) { alert('Could not determine remote version.'); return; }
       const remoteVersion = match[1];
-
       function cmp(a, b) {
         const pa = a.split('.').map(n => parseInt(n, 10));
         const pb = b.split('.').map(n => parseInt(n, 10));
@@ -816,7 +686,6 @@
         }
         return 0;
       }
-
       if (cmp(remoteVersion, CURRENT_VERSION) > 0) {
         if (confirm(`A newer version (${remoteVersion}) is available. Redirect to GitHub repo?`)) {
           window.location.href = 'https://github.com/thelwc227/gibbon-ui-tweaks/tree/main';
@@ -827,39 +696,31 @@
     } catch (e) {
       alert('Error checking updates: ' + (e && e.message ? e.message : e));
     }
-  }
-  updateBtn.addEventListener('click', checkForUpdates);
+  };
+  updateBtn.addEventListener('click', updateBtnHandler);
 
-  // --- Custom PFP replacement (only override user's own avatar <a> block when img src matches) ---
+  // Custom PFP replacement
   let originalPFP = null;
-
   function detectOriginalPFP(scope = document) {
     const userAnchorImg = scope.querySelector('a[href*="gibbonPersonID="] img.w-full.-mt-1');
     if (userAnchorImg) originalPFP = userAnchorImg.src;
   }
-
   function replaceCustomPFP(scope = document) {
     if (getLS(LS.masterToggle, DEFAULTS.masterToggle.toString()) === 'false') return;
     const url = (getLS(LS.customPFP, DEFAULTS.customPFP) || '').trim();
     if (!url || !originalPFP) return;
 
     const targetImgs = scope.querySelectorAll('a[href*="gibbonPersonID="] img.w-full.-mt-1');
-    targetImgs.forEach(img => {
-      if (img.src === originalPFP) {
-        img.src = url;
-      }
-    });
+    targetImgs.forEach(img => { if (img.src === originalPFP) img.src = url; });
 
     const cardImgs = scope.querySelectorAll('img.inline-block.shadow.bg-white.border.border-gray-600.w-20.lg\\:w-24.p-1');
     cardImgs.forEach(img => {
       if (!img.dataset.originalSrc) img.dataset.originalSrc = img.src;
-      if (img.src === originalPFP) {
-        img.src = url;
-      }
+      if (img.src === originalPFP) img.src = url;
     });
   }
 
-  // --- Custom Name replacement (live) + Easter Egg persistence/revert ---
+  // Custom Name replacement + Easter Egg
   function applySteveCheungEasterEgg(scope = document) {
     const specialUrl = 'https://gibbon.ichk.edu.hk/uploads/2025/04/scheung6.jpg';
     const imgs = scope.querySelectorAll('img.inline-block.shadow.bg-white.border.border-gray-600.w-20.lg\\:w-24.p-1');
@@ -868,16 +729,10 @@
       img.src = specialUrl;
     });
   }
-
   function revertSteveCheungEasterEgg(scope = document) {
     const imgs = scope.querySelectorAll('img.inline-block.shadow.bg-white.border.border-gray-600.w-20.lg\\:w-24.p-1');
-    imgs.forEach(img => {
-      if (img.dataset.originalSrc) {
-        img.src = img.dataset.originalSrc;
-      }
-    });
+    imgs.forEach(img => { if (img.dataset.originalSrc) img.src = img.dataset.originalSrc; });
   }
-
   function replaceCustomName(scope = document) {
     if (getLS(LS.masterToggle, DEFAULTS.masterToggle.toString()) === 'false') return;
     const newName = (getLS(LS.customName, DEFAULTS.customName) || '').trim();
@@ -885,24 +740,10 @@
     const nameAnchor = scope.querySelector(
       'div.flex-grow.flex.items-center.justify-end.text-right.text-sm.text-purple-200 a.hidden.sm\\:block.text-purple-200'
     );
-    if (nameAnchor && newName) {
-      nameAnchor.textContent = newName;
-    }
+    if (nameAnchor && newName) nameAnchor.textContent = newName;
 
-    if (newName === 'Steve Cheung') {
-      applySteveCheungEasterEgg(scope);
-    } else {
-      revertSteveCheungEasterEgg(scope);
-    }
-  }
-
-  function runCustomPFPInitial() {
-    detectOriginalPFP(document);
-    replaceCustomPFP(document);
-  }
-
-  function runCustomNameInitial() {
-    replaceCustomName(document);
+    if (newName === 'Steve Cheung') applySteveCheungEasterEgg(scope);
+    else revertSteveCheungEasterEgg(scope);
   }
 
   const pfpObserver = new MutationObserver(mutations => {
@@ -910,9 +751,7 @@
       mutation.addedNodes.forEach(node => {
         if (!(node instanceof Element)) return;
         const newUserImg = node.querySelector && node.querySelector('a[href*="gibbonPersonID="] img.w-full.-mt-1');
-        if (newUserImg && !originalPFP) {
-          originalPFP = newUserImg.src;
-        }
+        if (newUserImg && !originalPFP) originalPFP = newUserImg.src;
         replaceCustomPFP(node);
       });
     });
@@ -929,106 +768,164 @@
   });
   nameObserver.observe(document.body, { childList: true, subtree: true });
 
-  // --- Unload All Images (global) ---
-function unloadAllImages(scope = document) {
-  const imgs = scope.querySelectorAll('img');
-  imgs.forEach(img => {
-    if (img.dataset.unloadedPlaceholder) return;
+  // --- Stream-only Unload Images + Smart Unload Past Images ---
+  function isStreamPage() {
+    const u = new URL(window.location.href);
+    const q = u.searchParams.get('q');
+    return u.pathname === '/index.php' && decodeURIComponent(q || '') === '/modules/Stream/stream.php';
+  }
 
-    const originalSrc = img.getAttribute('src') || img.dataset.src || '';
-    if (!originalSrc) return;
+  let streamIO = null; // IntersectionObserver for smart unload
+  function ensureStreamObserver() {
+    if (streamIO) return streamIO;
+    streamIO = new IntersectionObserver(entries => {
+      const unloadEnabled = getLS(LS.unloadImages, DEFAULTS.unloadImages.toString()) === 'true';
+      entries.forEach(entry => {
+        const img = entry.target;
+        if (!(img instanceof HTMLImageElement)) return;
 
-    img.dataset.originalSrc = originalSrc;
-    img.removeAttribute('src');
+        if (entry.isIntersecting) {
+          // In viewport: if currently a placeholder button exists before it, keep image loaded
+          // If image has no src but has originalSrc, load it
+          if (!img.src && img.dataset.originalSrc) {
+            img.src = img.dataset.originalSrc;
+            img.style.display = '';
+            // Remove any preceding placeholder button
+            const prev = img.previousSibling;
+            if (prev && prev.classList && prev.classList.contains('img-placeholder-btn')) prev.remove();
+          }
+        } else if (unloadEnabled) {
+          // Out of viewport: unload and restore button
+          if (img.src) {
+            img.removeAttribute('src');
+            img.style.display = 'none';
+            if (!img.dataset.originalSrc) {
+              img.dataset.originalSrc = img.getAttribute('data-src') || '';
+            }
+            // Insert button if not present
+            const prev = img.previousSibling;
+            if (!(prev && prev.classList && prev.classList.contains('img-placeholder-btn'))) {
+              const btn = document.createElement('button');
+              btn.className = 'img-placeholder-btn';
+              btn.textContent = 'Load image';
+              const parent = img.parentNode;
+              if (parent) parent.insertBefore(btn, img);
+              btn.addEventListener('click', e => {
+                e.preventDefault();
+                e.stopPropagation();
+                const src = img.dataset.originalSrc;
+                if (src) {
+                  img.setAttribute('src', src);
+                  img.style.display = '';
+                  btn.remove();
+                  // Block clicks on restored image for 2 seconds
+                  const blockClick = ev => { ev.preventDefault(); ev.stopPropagation(); };
+                  img.addEventListener('click', blockClick);
+                  setTimeout(() => { img.removeEventListener('click', blockClick); }, 2000);
+                }
+              });
+            }
+          }
+        }
+      });
+    }, { rootMargin: '200px', threshold: 0.01 });
+    return streamIO;
+  }
 
-    const btn = document.createElement('button');
-    btn.className = 'img-placeholder-btn';
-    btn.textContent = 'Load image';
-    img.style.display = 'none';
-    img.dataset.unloadedPlaceholder = 'true';
+  function unloadStreamImages(scope = document) {
+    const imgs = scope.querySelectorAll('img.image-item');
+    const io = ensureStreamObserver();
+    imgs.forEach(img => {
+      if (img.dataset.unloadedPlaceholder) return;
 
-    const parent = img.parentNode;
-    if (!parent) return;
-    parent.insertBefore(btn, img);
+      const originalSrc = img.getAttribute('data-src') || img.getAttribute('src') || '';
+      if (!originalSrc) return;
 
-    btn.addEventListener('click', () => {
-      // Create overlay
-      const overlay = document.createElement('div');
-      overlay.style.position = 'fixed';
-      overlay.style.top = '0';
-      overlay.style.left = '0';
-      overlay.style.width = '100%';
-      overlay.style.height = '100%';
-      overlay.style.background = 'rgba(0,0,0,0.8)';
-      overlay.style.display = 'flex';
-      overlay.style.alignItems = 'center';
-      overlay.style.justifyContent = 'center';
-      overlay.style.zIndex = '99999';
+      img.dataset.originalSrc = originalSrc;
+      img.removeAttribute('src');
+      img.removeAttribute('data-src');
+      img.removeAttribute('data-lazy-prepared');
 
-      const newImg = document.createElement('img');
-      newImg.src = originalSrc;
-      newImg.style.maxWidth = '90%';
-      newImg.style.maxHeight = '90%';
-      newImg.style.boxShadow = '0 0 20px #000';
+      const btn = document.createElement('button');
+      btn.className = 'img-placeholder-btn';
+      btn.textContent = 'Load image';
+      img.style.display = 'none';
+      img.dataset.unloadedPlaceholder = 'true';
 
-      overlay.appendChild(newImg);
-      document.body.appendChild(overlay);
+      const parent = img.parentNode;
+      if (!parent) return;
+      parent.insertBefore(btn, img);
 
-      // Close overlay on click
-      overlay.addEventListener('click', () => overlay.remove());
+      btn.addEventListener('click', e => {
+        e.preventDefault();
+        e.stopPropagation();
+        const src = img.dataset.originalSrc;
+        if (src) {
+          img.setAttribute('src', src);
+          img.style.display = '';
+          btn.remove();
+          delete img.dataset.unloadedPlaceholder;
+
+          // Block clicks on restored image for 2 seconds
+          const blockClick = ev => { ev.preventDefault(); ev.stopPropagation(); };
+          img.addEventListener('click', blockClick);
+          setTimeout(() => { img.removeEventListener('click', blockClick); }, 2000);
+        }
+      });
+
+      // Observe for smart unload when out of viewport
+      io.observe(img);
     });
-  });
-}
+  }
 
-
-  function maybeApplyUnloadImages() {
+  function maybeApplyUnloadStreamImages() {
+    if (!isStreamPage()) return;
     if (getLS(LS.unloadImages, DEFAULTS.unloadImages.toString()) === 'true') {
-      unloadAllImages(document);
+      unloadStreamImages(document);
     }
   }
 
   const unloadObserver = new MutationObserver(mutations => {
+    if (!isStreamPage()) return;
     if (getLS(LS.unloadImages, DEFAULTS.unloadImages.toString()) !== 'true') return;
     mutations.forEach(mutation => {
       mutation.addedNodes.forEach(node => {
         if (!(node instanceof Element)) return;
-        if (node.tagName === 'IMG') {
-          unloadAllImages(node.parentNode || document);
+        if (node.matches && node.matches('img.image-item')) {
+          unloadStreamImages(node.parentNode || document);
         } else {
-          const imgs = node.querySelectorAll && node.querySelectorAll('img');
-          if (imgs && imgs.length) unloadAllImages(node);
+          const imgs = node.querySelectorAll && node.querySelectorAll('img.image-item');
+          if (imgs && imgs.length) unloadStreamImages(node);
         }
       });
     });
   });
   unloadObserver.observe(document.body, { childList: true, subtree: true });
 
-  // --- Auto Scroll (global) ---
+  // --- Auto Scroll (faster) ---
   let autoScrollTimer = null;
-function applyAutoScroll() {
-  const enabled = getLS(LS.autoScroll, DEFAULTS.autoScroll.toString()) === 'true';
-  const speed = parseInt(getLS(LS.scrollSpeed, DEFAULTS.scrollSpeed), 10) || DEFAULTS.scrollSpeed;
+  function applyAutoScroll() {
+    const enabled = getLS(LS.autoScroll, DEFAULTS.autoScroll.toString()) === 'true';
+    const speed = parseInt(getLS(LS.scrollSpeed, DEFAULTS.scrollSpeed), 10) || DEFAULTS.scrollSpeed;
 
-  if (autoScrollTimer) {
-    clearInterval(autoScrollTimer);
-    autoScrollTimer = null;
-  }
-  if (!enabled) return;
-
-  // Map speed 1–10 to much faster values
-  const intervalMs = 50; // fixed fast tick
-  const stepPx = speed * 20; // 20px per speed unit
-
-  autoScrollTimer = setInterval(() => {
-    window.scrollBy(0, stepPx);
-    const atBottom = (window.innerHeight + window.scrollY) >= document.body.scrollHeight - 2;
-    if (atBottom) {
+    if (autoScrollTimer) {
       clearInterval(autoScrollTimer);
       autoScrollTimer = null;
     }
-  }, intervalMs);
-}
+    if (!enabled) return;
 
+    const intervalMs = 20;              // very fast tick
+    const stepPx = speed * 50;          // aggressive step size
+
+    autoScrollTimer = setInterval(() => {
+      window.scrollBy(0, stepPx);
+      const atBottom = (window.innerHeight + window.scrollY) >= document.body.scrollHeight - 2;
+      if (atBottom) {
+        clearInterval(autoScrollTimer);
+        autoScrollTimer = null;
+      }
+    }, intervalMs);
+  }
 
   // --- Endless Stream (Lazy Load + Auto Load More) ---
   function isExactStreamPage() {
@@ -1042,7 +939,6 @@ function applyAutoScroll() {
     if (getLS(LS.streamEnhance, DEFAULTS.streamEnhance.toString()) !== 'true') return;
     if (!isExactStreamPage()) return;
 
-    // Lazy Load Images
     function prepareImages(scope = document) {
       const imgs = scope.querySelectorAll('img');
       imgs.forEach(img => {
@@ -1105,7 +1001,6 @@ function applyAutoScroll() {
     });
     mutationObserver.observe(document.body, { childList: true, subtree: true });
 
-    // Auto Click "Load More"
     function clickElement(el) {
       el.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
       el.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
@@ -1149,7 +1044,6 @@ function applyAutoScroll() {
       if (inViewport) clickElement(initialBtn);
     }
 
-    // Fallback polling for robustness
     let pollCount = 0;
     const poll = setInterval(() => {
       if (pollCount++ > 100) { clearInterval(poll); return; }
@@ -1161,22 +1055,14 @@ function applyAutoScroll() {
     }, 200);
   }
 
-  // --- Sliding Tabs (Stepwise Drag Tab Hover with Animation) ---
+  // Sliding Tabs
   function initSlidingTabs() {
     if (getLS(LS.slidingTabs, DEFAULTS.slidingTabs.toString()) !== 'true') return;
 
     const style = document.createElement('style');
     style.textContent = `
-      .tab-active-anim {
-        transition: all 0.3s ease;
-        transform: scale(1.1);
-        opacity: 1;
-      }
-      .tab-inactive-anim {
-        transition: all 0.3s ease;
-        transform: scale(1.0);
-        opacity: 0.6;
-      }
+      .tab-active-anim { transition: all 0.3s ease; transform: scale(1.1); opacity: 1; }
+      .tab-inactive-anim { transition: all 0.3s ease; transform: scale(1.0); opacity: 0.6; }
     `;
     document.head.appendChild(style);
 
@@ -1210,10 +1096,7 @@ function applyAutoScroll() {
         if (deltaX > threshold && currentIndex < buttons.length - 1) {
           currentIndex += 1;
           buttons.forEach(b => b.classList.remove('tab-active-anim','tab-inactive-anim'));
-          buttons.forEach((b,i) => {
-            if (i === currentIndex) b.classList.add('tab-active-anim');
-            else b.classList.add('tab-inactive-anim');
-          });
+          buttons.forEach((b,i) => { if (i === currentIndex) b.classList.add('tab-active-anim'); else b.classList.add('tab-inactive-anim'); });
           buttons[currentIndex].click();
           startX = e.clientX;
         }
@@ -1221,10 +1104,7 @@ function applyAutoScroll() {
         if (deltaX < -threshold && currentIndex > 0) {
           currentIndex -= 1;
           buttons.forEach(b => b.classList.remove('tab-active-anim','tab-inactive-anim'));
-          buttons.forEach((b,i) => {
-            if (i === currentIndex) b.classList.add('tab-active-anim');
-            else b.classList.add('tab-inactive-anim');
-          });
+          buttons.forEach((b,i) => { if (i === currentIndex) b.classList.add('tab-active-anim'); else b.classList.add('tab-inactive-anim'); });
           buttons[currentIndex].click();
           startX = e.clientX;
         }
@@ -1242,12 +1122,91 @@ function applyAutoScroll() {
     document.addEventListener('mouseup', onMouseUp);
   }
 
+  // Menu events
+  pfpApply.addEventListener('click', () => {
+    const url = pfpInput.value.trim();
+    setLS(LS.customPFP, url);
+    replaceCustomPFP(document);
+  });
+  nameApply.addEventListener('click', () => {
+    const newName = nameInput.value.trim();
+    setLS(LS.customName, newName);
+    replaceCustomName(document);
+  });
+  slidingTabsToggle.addEventListener('change', () => {
+    setLS(LS.slidingTabs, slidingTabsToggle.checked);
+    location.reload();
+  });
+  streamToggle.addEventListener('change', () => {
+    setLS(LS.streamEnhance, streamToggle.checked);
+    location.reload();
+  });
+  unloadToggle.addEventListener('change', () => {
+    setLS(LS.unloadImages, unloadToggle.checked);
+    location.reload();
+  });
+  scrollToggle.addEventListener('change', () => {
+    setLS(LS.autoScroll, scrollToggle.checked);
+    applyAutoScroll();
+  });
+  speedSlider.addEventListener('input', () => {
+    setLS(LS.scrollSpeed, speedSlider.value);
+    speedValue.textContent = speedSlider.value;
+    applyAutoScroll();
+  });
+  squareToggle.addEventListener('change', () => {
+    setLS(LS.squareToggle, squareToggle.checked);
+    location.reload();
+  });
+  betterToggle.addEventListener('change', () => {
+    setLS(LS.betterToggle, betterToggle.checked);
+    location.reload();
+  });
+  keybindSelect.addEventListener('change', () => {
+    const kb = keybindSelect.value.toLowerCase();
+    setLS(LS.keybind, kb);
+    meta.textContent = `Version ${CURRENT_VERSION} • Toggle: ${kb.toUpperCase()} • Position: ${positionSelect.value.replace('-', ' ')}`;
+  });
+  positionSelect.addEventListener('change', () => {
+    const pos = positionSelect.value;
+    setLS(LS.menuPosition, pos);
+    location.reload();
+  });
+  completeBtn.addEventListener('click', () => {
+    document.querySelectorAll('input.mark-complete[type="checkbox"]').forEach(cb => {
+      cb.checked = true;
+      cb.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+  });
+  uncompleteBtn.addEventListener('click', () => {
+    document.querySelectorAll('input.mark-complete[type="checkbox"]').forEach(cb => {
+      cb.checked = false;
+      cb.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+  });
+
+  // Toggle menu visibility by keybind
+  document.addEventListener('keydown', (e) => {
+    const t = e.target;
+    const typing = t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable);
+    if (typing) return;
+    const kb = (getLS(LS.keybind, DEFAULTS.keybind)).toLowerCase();
+    if (e.key && e.key.toLowerCase() === kb) {
+      const newDisplay = (menu.style.display === 'none') ? 'flex' : 'none';
+      menu.style.display = newDisplay;
+      setLS(LS.menuVisible, newDisplay === 'flex' ? 'true' : 'false');
+    }
+  });
+  const visiblePersisted = getLS(LS.menuVisible, DEFAULTS.menuVisible);
+  menu.style.display = (visiblePersisted === 'false') ? 'none' : 'flex';
+
   // Initialize features when DOM is ready
   function onReady() {
     applyAllStyles();
-    runCustomPFPInitial();
-    runCustomNameInitial();
-    maybeApplyUnloadImages();
+    detectOriginalPFP(document);
+    replaceCustomPFP(document);
+    replaceCustomName(document);
+    maybeApplyUnloadStreamImages();
     applyAutoScroll();
     initEndlessStream();
     initSlidingTabs();
