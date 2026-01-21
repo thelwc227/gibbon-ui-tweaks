@@ -1,11 +1,13 @@
 // ==UserScript==
 // @name         gibbon-ui-tweaks
 // @namespace    http://tampermonkey.net/
-// @version      3.4.673
+// @version      3.4.675
 // @description  A script written with Copilot AI to customize the look of gibbonedu, features are manually tested and refined.
 // @match        https://gibbon.ichk.edu.hk/*
 // @grant        none
 // @license MIT
+// @downloadURL https://update.greasyfork.org/scripts/562588/gibbon-ui-tweaks.user.js
+// @updateURL https://update.greasyfork.org/scripts/562588/gibbon-ui-tweaks.meta.js
 // ==/UserScript==
 
 (function () {
@@ -22,6 +24,7 @@
     squareToggle: 'gibbon_squareToggle',
     betterToggle: 'gibbon_betterToggle',
     gamerParty: 'gibbon_gamerParty',
+    ttBackground: 'gibbon_ttBackground',
     keybind: 'gibbon_keybind',
     menuVisible: 'gibbon_menuVisible',
     menuPosition: 'gibbon_menuPosition',
@@ -45,6 +48,7 @@
     betterToggle: false,
     gamerParty: false,
     keybind: 'p',
+    ttBackground: '#BFDBFE',
     menuVisible: 'true',
     menuPosition: 'top-right',
     streamEnhance: false,
@@ -120,113 +124,137 @@
     }
   `);
 
-  // Apply site styles
-  function applyAllStyles() {
-    const s = document.getElementById('customStyles'); if (s) s.remove();
-    if (getLS(LS.masterToggle, DEFAULTS.masterToggle.toString()) === 'false') return;
+// Apply site styles
+function applyAllStyles() {
+  const s = document.getElementById('customStyles'); if (s) s.remove();
+  if (getLS(LS.masterToggle, DEFAULTS.masterToggle.toString()) === 'false') return;
 
-    const linkColor = getLS(LS.linkColor, DEFAULTS.linkColor);
-    const barAccent = getLS(LS.barAccent, DEFAULTS.barAccent);
-    const barFontSize = getLS(LS.barFontSize, DEFAULTS.barFontSize);
-    const paragraphFont = getLS(LS.paragraphFont, DEFAULTS.paragraphFont);
-    const squareToggle = getLS(LS.squareToggle, DEFAULTS.squareToggle.toString()) === 'true';
-    const betterToggle = getLS(LS.betterToggle, DEFAULTS.betterToggle.toString()) === 'true';
-    const gamerParty = getLS(LS.gamerParty, DEFAULTS.gamerParty.toString()) === 'true';
-    const betterTables = getLS(LS.betterTables, DEFAULTS.betterTables.toString()) === 'true';
+  const linkColor = getLS(LS.linkColor, DEFAULTS.linkColor);
+  const barAccent = getLS(LS.barAccent, DEFAULTS.barAccent);
+  const barFontSize = getLS(LS.barFontSize, DEFAULTS.barFontSize);
+  const paragraphFont = getLS(LS.paragraphFont, DEFAULTS.paragraphFont);
+  const squareToggle = getLS(LS.squareToggle, DEFAULTS.squareToggle.toString()) === 'true';
+  const betterToggle = getLS(LS.betterToggle, DEFAULTS.betterToggle.toString()) === 'true';
+  const gamerParty = getLS(LS.gamerParty, DEFAULTS.gamerParty.toString()) === 'true';
+  const betterTables = getLS(LS.betterTables, DEFAULTS.betterTables.toString()) === 'true';
+  const ttBackground = getLS(LS.ttBackground, DEFAULTS.ttBackground);
 
-    let css = `
-      p,
-      span.block.text-sm.text-gray-700.overflow-x-auto {
-        font-family: '${paragraphFont}', sans-serif !important;
-        font-size: 17px !important;
-        line-height: 1.2 !important;
+  let css = `
+    p,
+    span.block.text-sm.text-gray-700.overflow-x-auto {
+      font-family: '${paragraphFont}', sans-serif !important;
+      font-size: 17px !important;
+      line-height: 1.2 !important;
+    }
+    table, thead, tbody, tr, th, td,
+    td *:not(svg):not(path),
+    th *:not(svg):not(path),
+    .text-sm, .text-xs, .text-xxs,
+    .italic, .font-semibold, .font-bold,
+    .px-2, .px-3, .py-2, .py-3,
+    .whitespace-nowrap,
+    .inline-flex.items-center.align-middle.rounded-md {
+      font-family: '${paragraphFont}', sans-serif !important;
+    }
+    nav a,
+    li.sm\\:relative.group a.block.uppercase.font-bold.text-sm,
+    ul li a.block.text-sm {
+      font-family: '${paragraphFont}', sans-serif !important;
+    }
+    main a, .content a, article a, p a { text-decoration: none !important; }
+    main a:hover, .content a:hover, article a:hover, p a:hover { text-decoration: underline !important; }
+  `;
+
+  if (gamerParty) {
+    css += `
+      th {
+        --rgbHue: 0;
+        background-color: hsl(var(--rgbHue), 90%, 45%) !important;
+        color: #fff !important;
+        font-size: ${barFontSize} !important;
+        animation: rgbCycle 6s linear infinite !important;
       }
-      table, thead, tbody, tr, th, td,
-      td *:not(svg):not(path),
-      th *:not(svg):not(path),
-      .text-sm, .text-xs, .text-xxs,
-      .italic, .font-semibold, .font-bold,
-      .px-2, .px-3, .py-2, .py-3,
-      .whitespace-nowrap,
-      .inline-flex.items-center.align-middle.rounded-md {
-        font-family: '${paragraphFont}', sans-serif !important;
+      main a, .content a, article a, p a {
+        --rgbHue: 0;
+        color: hsl(var(--rgbHue), 90%, 50%) !important;
+        animation: rgbCycle 6s linear infinite !important;
+        display: inline-block;
       }
-      nav a,
-      li.sm\\:relative.group a.block.uppercase.font-bold.text-sm,
-      ul li a.block.text-sm {
-        font-family: '${paragraphFont}', sans-serif !important;
+      /* Timetable blocks in gamer party mode */
+      .ttItem.bg-blue-200 {
+        --rgbHue: 0;
+        background-color: hsl(var(--rgbHue), 90%, 60%) !important;
+        color: #fff !important;
+        animation: rgbCycle 6s linear infinite !important;
       }
-      main a, .content a, article a, p a { text-decoration: none !important; }
-      main a:hover, .content a:hover, article a:hover, p a:hover { text-decoration: underline !important; }
+      .ttItem.bg-blue-200 .tag {
+        --rgbHue: 0;
+        background-color: hsl(var(--rgbHue), 90%, 50%) !important;
+        color: #fff !important;
+        animation: rgbCycle 6s linear infinite !important;
+      }
     `;
+  } else {
+    css += `
+      th {
+        background-color: ${barAccent} !important;
+        color: #fff !important;
+        font-size: ${barFontSize} !important;
+      }
+      main a, .content a, article a, p a { color: ${linkColor} !important; }
 
-    if (gamerParty) {
-      css += `
-        th {
-          --rgbHue: 0;
-          background-color: hsl(var(--rgbHue), 90%, 45%) !important;
-          color: #fff !important;
-          font-size: ${barFontSize} !important;
-          animation: rgbCycle 6s linear infinite !important;
-        }
-        main a, .content a, article a, p a {
-          --rgbHue: 0;
-          color: hsl(var(--rgbHue), 90%, 50%) !important;
-          animation: rgbCycle 6s linear infinite !important;
-          display: inline-block;
-        }
-      `;
-    } else {
-      css += `
-        th {
-          background-color: ${barAccent} !important;
-          color: #fff !important;
-          font-size: ${barFontSize} !important;
-        }
-        main a, .content a, article a, p a { color: ${linkColor} !important; }
-      `;
-    }
-
-    if (squareToggle) css += `.ttItem { border-radius: 0 !important; }`;
-    if (betterToggle) {
-      css += `
-        .ttItem {
-          padding: 10px !important;
-          outline: 1px solid #0077cc !important;
-          color: #C93F3F !important;
-          font-size: 16px !important;
-          line-height: 1.6 !important;
-          font-weight: 500 !important;
-          text-align: center !important;
-        }
-        .ttItem:hover { outline-color: #005fa3 !important; }
-        .ttItem span { text-align: center !important; font-weight: bold !important; }
-        .ttItem div.inline-block {
-          display: inline-block !important;
-          font-size: 12px !important;
-          font-weight: bold !important;
-          margin-top: 2px !important;
-          color: inherit !important;
-        }
-      `;
-    }
-    if (betterTables) {
-      css += `
-        th {
-          font-family: '${paragraphFont}', sans-serif !important;
-          padding: 12px !important;
-          letter-spacing: 0.5px !important;
-          font-weight: bold !important;
-          text-transform: uppercase !important;
-          border-bottom: 3px solid #555 !important;
-        }
-        tr:nth-child(even) { background-color: #f5f5f5 !important; }
-      `;
-    }
-
-    upsertStyle('customStyles', css);
+      /* Timetable blocks only if originally blue */
+      .ttItem.bg-blue-200 {
+        background-color: ${ttBackground} !important;
+      }
+      .ttItem.bg-blue-200 .tag {
+        background-color: ${ttBackground} !important;
+      }
+    `;
   }
-  applyAllStyles();
+
+  if (squareToggle) css += `.ttItem { border-radius: 0 !important; }`;
+  if (betterToggle) {
+    css += `
+      .ttItem {
+        padding: 10px !important;
+        outline: 1px solid #0077cc !important;
+        color: #C93F3F !important;
+        font-size: 16px !important;
+        line-height: 1.6 !important;
+        font-weight: 500 !important;
+        text-align: center !important;
+      }
+      .ttItem:hover { outline-color: #005fa3 !important; }
+      .ttItem span { text-align: center !important; font-weight: bold !important; }
+      .ttItem div.inline-block {
+        display: inline-block !important;
+        font-size: 12px !important;
+        font-weight: bold !important;
+        margin-top: 2px !important;
+        color: inherit !important;
+      }
+    `;
+  }
+  if (betterTables) {
+    css += `
+      th {
+        font-family: '${paragraphFont}', sans-serif !important;
+        padding: 12px !important;
+        letter-spacing: 0.5px !important;
+        font-weight: bold !important;
+        text-transform: uppercase !important;
+        border-bottom: 3px solid #555 !important;
+      }
+      tr:nth-child(even) { background-color: #f5f5f5 !important; }
+    `;
+  }
+
+  upsertStyle('customStyles', css);
+}
+applyAllStyles();
+
+
 
   // Build popup menu
   const menu = document.createElement('div');
@@ -390,7 +418,7 @@
   nameApply.textContent = 'Apply';
   const nameHint = document.createElement('div');
   nameHint.className = 'hint';
-  nameHint.textContent = 'Replaces your displayed name in header/sidebar. Enter "Steve Cheung" for a surprise.';
+  nameHint.textContent = 'Replaces your displayed name in header/sidebar. Nothing special here!.';
   nameRow.appendChild(nameInput);
   nameRow.appendChild(nameApply);
   nameGroup.appendChild(nameLabel);
@@ -473,6 +501,27 @@
   timetableSection.appendChild(timetableHeader);
   timetableSection.appendChild(squareGroup);
   timetableSection.appendChild(betterGroup);
+
+  // Timetable background color picker
+const ttBgGroup = document.createElement('div');
+ttBgGroup.className = 'group';
+
+const ttBgLabel = document.createElement('span');
+ttBgLabel.textContent = 'Timetable background';
+
+const ttBgPicker = document.createElement('input');
+ttBgPicker.type = 'color';
+ttBgPicker.value = getLS(LS.ttBackground, DEFAULTS.ttBackground);
+
+ttBgGroup.appendChild(ttBgLabel);
+ttBgGroup.appendChild(ttBgPicker);
+timetableSection.appendChild(ttBgGroup);
+
+// Event handler
+ttBgPicker.addEventListener('input', () => {
+  setLS(LS.ttBackground, ttBgPicker.value);
+  if (masterToggleEl.checked) applyAllStyles();
+});
 
   // STREAM ENHANCEMENTS SECTION
   const streamEnhSection = document.createElement('div');
@@ -767,6 +816,117 @@
     });
   });
   nameObserver.observe(document.body, { childList: true, subtree: true });
+
+  // --- Super Cheung Easter Egg (Cheung Cheung botten integration) ---
+  let superCheungActive = false;
+
+  function activateSuperCheungMode(scope = document) {
+    const REPLACEMENT_URL = 'https://gibbon.ichk.edu.hk/uploads/2025/04/scheung6.jpg';
+
+    // Inject CSS for RGB glow animation (only once)
+    if (!document.getElementById('superCheungGlow')) {
+      const style = document.createElement('style');
+      style.id = 'superCheungGlow';
+      style.textContent = `
+        @keyframes rgbGlow {
+          0%   { box-shadow: 0 0 12px 4px red; }
+          25%  { box-shadow: 0 0 12px 4px orange; }
+          50%  { box-shadow: 0 0 12px 4px lime; }
+          75%  { box-shadow: 0 0 12px 4px cyan; }
+          100% { box-shadow: 0 0 12px 4px magenta; }
+        }
+        .super-cheung-glow {
+          border-radius: 6px;
+          animation: rgbGlow 3s linear infinite;
+        }
+      `;
+      document.head.appendChild(style);
+    }
+
+    function replaceIcons(s = scope) {
+      // Replace all <img>
+      const imgs = s.querySelectorAll('img');
+      imgs.forEach(img => {
+        if (!img.dataset.originalSrc) img.dataset.originalSrc = img.src;
+        img.src = REPLACEMENT_URL;
+        img.style.objectFit = 'contain';
+        img.classList.add('super-cheung-glow');
+      });
+
+      // Replace all <svg>
+      const svgs = s.querySelectorAll('svg');
+      svgs.forEach(svg => {
+        const img = document.createElement('img');
+        img.src = REPLACEMENT_URL;
+        img.style.width = svg.getAttribute('width') || '24px';
+        img.style.height = svg.getAttribute('height') || '24px';
+        img.style.display = 'inline-block';
+        img.classList.add('super-cheung-glow');
+        svg.replaceWith(img);
+      });
+    }
+
+    // Initial run
+    replaceIcons();
+
+    // Keep effect on DOM changes
+    if (!scope._superCheungObserver) {
+      scope._superCheungObserver = new MutationObserver(() => replaceIcons());
+      scope._superCheungObserver.observe(scope.body || scope, { childList: true, subtree: true });
+    }
+
+    superCheungActive = true;
+    applyAllStyles();
+  }
+
+  function revertSuperCheungMode(scope = document) {
+    // Restore original images if stored
+    const imgs = scope.querySelectorAll('img');
+    imgs.forEach(img => {
+      if (img.dataset.originalSrc) {
+        img.src = img.dataset.originalSrc;
+        delete img.dataset.originalSrc;
+      }
+      img.classList.remove('super-cheung-glow');
+    });
+
+    // Disconnect observer if active
+    if (scope._superCheungObserver) {
+      scope._superCheungObserver.disconnect();
+      delete scope._superCheungObserver;
+    }
+
+    // Only refresh once when leaving Super Cheung mode
+    if (superCheungActive) {
+      superCheungActive = false;
+      location.reload();
+    }
+  }
+
+  // Update replaceCustomName to handle activation/reversion
+  function replaceCustomName(scope = document) {
+    if (getLS(LS.masterToggle, DEFAULTS.masterToggle.toString()) === 'false') return;
+    const name = (getLS(LS.customName, DEFAULTS.customName) || '').trim();
+
+    if (name) {
+      const targets = scope.querySelectorAll('header .user-name, .sidebar .user-name');
+      targets.forEach(el => el.textContent = name);
+    }
+
+    if (name === 'Super Cheung') {
+      activateSuperCheungMode(scope);
+      return;
+    } else {
+      revertSuperCheungMode(scope);
+    }
+
+    if (name === 'Steve Cheung') {
+      applySteveCheungEasterEgg(scope);
+    } else {
+      revertSteveCheungEasterEgg(scope);
+    }
+  }
+
 
   // --- Stream-only Unload Images + Smart Unload Past Images ---
   function isStreamPage() {
