@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         gibbon-ui-tweaks
 // @namespace    http://tampermonkey.net/
-// @version      3.4.677
+// @version      3.4.679
 // @description  A script written with Copilot AI to customize the look of gibbonedu, features are manually tested and refined.
 // @match        https://gibbon.ichk.edu.hk/*
 // @grant        none
@@ -13,7 +13,7 @@
 (function () {
   'use strict';
 
-  const CURRENT_VERSION = '3.4.675';
+  const CURRENT_VERSION = '3.4.679';
 
   const LS = {
     masterToggle: 'gibbon_masterToggle',
@@ -775,6 +775,22 @@ ttBgPicker.addEventListener('input', () => {
     }
   };
   updateBtn.addEventListener('click', updateBtnHandler);
+
+    document.addEventListener('keydown', e => {
+  const keybind = getLS(LS.keybind, DEFAULTS.keybind);
+  if (e.key.toLowerCase() === keybind) {
+    const menu = document.getElementById('controlMenu');
+    if (menu) {
+      if (menu.style.display === 'none') {
+        menu.style.display = 'flex';
+        setLS(LS.menuVisible, true);
+      } else {
+        menu.style.display = 'none';
+        setLS(LS.menuVisible, false);
+      }
+    }
+  }
+});
 
   // Custom PFP replacement
   let originalPFP = null;
