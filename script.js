@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         gibbon-ui-tweaks
 // @namespace    http://tampermonkey.net/
-// @version      3.4.679
+// @version      3.4.712
 // @description  A script written with Copilot AI to customize the look of gibbonedu, features are manually tested and refined.
 // @match        https://gibbon.ichk.edu.hk/*
 // @grant        none
@@ -13,7 +13,7 @@
 (function () {
   'use strict';
 
-  const CURRENT_VERSION = '3.4.679';
+  const CURRENT_VERSION = '3.4.712';
 
   const LS = {
     masterToggle: 'gibbon_masterToggle',
@@ -126,7 +126,6 @@
     }
   `);
 
-// Apply site styles
 function applyAllStyles() {
   const s = document.getElementById('customStyles');
   if (s) s.remove();
@@ -142,6 +141,8 @@ function applyAllStyles() {
   const betterTables = getLS(LS.betterTables, DEFAULTS.betterTables.toString()) === 'true';
   const ttBackground = getLS(LS.ttBackground, DEFAULTS.ttBackground);
   const lessonTextColor = getLS(LS.lessonTextColor, DEFAULTS.lessonTextColor);
+  const customPFP = getLS(LS.customPFP, DEFAULTS.customPFP);
+  const customName = getLS(LS.customName, DEFAULTS.customName);
 
   let css = `
     p,
@@ -264,7 +265,19 @@ function applyAllStyles() {
   }
 
   upsertStyle('customStyles', css);
+
+  // --- Custom PFP and Name ---
+  if (customPFP) {
+    const avatarImg = document.querySelector('a.flex-none.block img');
+    if (avatarImg) avatarImg.src = customPFP;
+  }
+
+  if (customName) {
+    const nameEl = document.querySelector('a.hidden.sm\\:block.text-purple-200');
+    if (nameEl) nameEl.textContent = customName;
+  }
 }
+
 
 applyAllStyles();
 
@@ -776,21 +789,31 @@ ttBgPicker.addEventListener('input', () => {
   };
   updateBtn.addEventListener('click', updateBtnHandler);
 
-    document.addEventListener('keydown', e => {
+document.addEventListener('keydown', (e) => {
   const keybind = getLS(LS.keybind, DEFAULTS.keybind);
-  if (e.key.toLowerCase() === keybind) {
-    const menu = document.getElementById('controlMenu');
-    if (menu) {
-      if (menu.style.display === 'none') {
-        menu.style.display = 'flex';
-        setLS(LS.menuVisible, true);
-      } else {
-        menu.style.display = 'none';
-        setLS(LS.menuVisible, false);
+
+  // If pressed key matches the hotkey
+  if (e.key.toLowerCase() === keybind.toLowerCase()) {
+    // Check if the active element is a text field
+    const active = document.activeElement;
+    const isTyping =
+      active && (
+        active.tagName === 'INPUT' ||
+        active.tagName === 'TEXTAREA' ||
+        active.tagName === 'SELECT' ||
+        active.isContentEditable
+      );
+
+    // Only toggle if not typing
+    if (!isTyping) {
+      const menu = document.getElementById('controlMenu');
+      if (menu) {
+        menu.style.display = (menu.style.display === 'none') ? 'flex' : 'none';
       }
     }
   }
 });
+
 
   // Custom PFP replacement
   let originalPFP = null;
